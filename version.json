@@ -6,13 +6,13 @@
   "interactionUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/interaction-pack.zip",
   "releaseDate": "2026-07-29",
   "changelog": [
-    "全新品牌：液态玻璃·灵动工具箱",
-    "iOS级液态玻璃：8层渲染管线+物理引擎",
+    "全新品牌：灵工坊·智能工具箱",
+    "全新图标：六边形工坊设计",
+    "iOS级液态玻璃UI：8层渲染管线+物理引擎",
     "物理引擎：弹簧物理+Navier-Stokes流体场+Metaball水滴融合",
     "两阶段资源加载：基础资源包→交互资源包",
-    "启动加载页：双阶段进度指示器+预览显示",
-    "全新应用图标：液态玻璃水滴设计",
-    "APK体积优化：从765MB缩减至11MB轻量级",
-    "支持跳过资源包直接进入应用"
+    "启动加载页：可跳过，关于页后台下载入口",
+    "更新日志折叠展开式显示",
+    "APK体积优化：11MB轻量级"
   ]
 }
