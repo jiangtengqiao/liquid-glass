@@ -3,11 +3,14 @@
   "versionCode": 4,
   "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/liquid-glass-v2.1.0.apk",
   "resourceUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/resources.zip",
+  "interactionUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/interaction-pack.zip",
   "releaseDate": "2026-07-29",
   "changelog": [
     "全新品牌：液态玻璃·灵动工具箱",
-    "在线资源加载：安装后联网下载资源包(530MB)",
-    "启动加载页：液态玻璃风格进度界面",
+    "iOS级液态玻璃：8层渲染管线+物理引擎",
+    "物理引擎：弹簧物理+Navier-Stokes流体场+Metaball水滴融合",
+    "两阶段资源加载：基础资源包→交互资源包",
+    "启动加载页：双阶段进度指示器+预览显示",
     "全新应用图标：液态玻璃水滴设计",
     "APK体积优化：从765MB缩减至11MB轻量级",
     "支持跳过资源包直接进入应用"
