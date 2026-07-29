@@ -1,18 +1,16 @@
 {
-  "version": "2.1.0",
-  "versionCode": 4,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/liquid-glass-v2.1.0.apk",
-  "resourceUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/resources.zip",
-  "interactionUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/interaction-pack.zip",
+  "version": "2.1.1",
+  "versionCode": 5,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/liquid-glass-v2.1.1.apk",
+  "resourceUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/resources.zip",
+  "interactionUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/interaction-pack.zip",
   "releaseDate": "2026-07-29",
   "changelog": [
-    "全新品牌：灵工坊·智能工具箱",
-    "全新图标：六边形工坊设计",
-    "iOS级液态玻璃UI：8层渲染管线+物理引擎",
-    "物理引擎：弹簧物理+Navier-Stokes流体场+Metaball水滴融合",
-    "两阶段资源加载：基础资源包→交互资源包",
-    "启动加载页：可跳过，关于页后台下载入口",
-    "更新日志折叠展开式显示",
-    "APK体积优化：11MB轻量级"
+    "修复计算器科学模式排版穿模问题",
+    "修复检查更新报错：改用JSON解析+多URL重试+重定向支持",
+    "修复资源包下载失败：增加超时时间和重试机制",
+    "关于页资源包支持单独下载和强制重下",
+    "壁纸画廊新增已下载资源分类",
+    "时钟等UI排版全面优化"
   ]
 }
