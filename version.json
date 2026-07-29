@@ -1,13 +1,15 @@
 {
-  "version": "2.0.0",
-  "versionCode": 3,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.0.0/liquid-glass-v2.0.0.apk",
+  "version": "2.1.0",
+  "versionCode": 4,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/liquid-glass-v2.1.0.apk",
+  "resourceUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.0/resources.zip",
   "releaseDate": "2026-07-29",
   "changelog": [
-    "新增14个实用工具模块：倒计时秒表、记事本、单位换算、密码生成器、BMI健康计算、壁纸画廊、白噪音播放器、文件管理、二维码生成器、涂鸦画板、指南针水平仪、手电筒、颜色选择器、日历日程",
-    "内置500MB+高清资源包：40张程序化壁纸、50段白噪音音频",
-    "18个工具模块全覆盖：时间、健康、创意、工具、传感器",
-    "液态玻璃效果全面增强，所有模块统一玻璃风格UI",
-    "更新机制优化：GitHub稳定URL自动更新"
+    "全新品牌：液态玻璃·灵动工具箱",
+    "在线资源加载：安装后联网下载资源包(530MB)",
+    "启动加载页：液态玻璃风格进度界面",
+    "全新应用图标：液态玻璃水滴设计",
+    "APK体积优化：从765MB缩减至11MB轻量级",
+    "支持跳过资源包直接进入应用"
   ]
 }
