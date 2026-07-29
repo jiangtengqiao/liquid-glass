@@ -1,13 +1,13 @@
 {
   "version": "1.1.0",
   "versionCode": 2,
-  "downloadUrl": "https://liquid-glass-apk-4m4ymnsack-46mox3g7w8.preview.iga-pages.com/液态玻璃-v1.1.apk",
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v1.1.0/liquid-glass-v1.1.apk",
   "releaseDate": "2026-07-28",
   "changelog": [
     "天气秒开：IP定位先行，GPS后台更新",
     "城市搜索：输入任意城市名查天气",
     "世界时钟：10个国际城市实时时钟",
     "液态玻璃效果增强：更通透质感",
-    "更新机制优化：稳定URL自动更新"
+    "更新机制优化：GitHub稳定URL自动更新"
   ]
 }
