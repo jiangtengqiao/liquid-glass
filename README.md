@@ -1,7 +1,7 @@
 # 液态玻璃 · 灵动工具箱
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.4.1-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.4.2-00D4FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
   <img src="https://img.shields.io/badge/APK-11MB-00E5A0?style=for-the-badge" alt="APK Size">
   <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
-  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.1/liquid-glass-v2.4.1.apk">直接下载 APK</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.2/liquid-glass-v2.4.2.apk">直接下载 APK</a> ·
   <a href="#-更新日志">更新日志</a> ·
   <a href="#-技术架构">技术架构</a>
 </p>
@@ -315,6 +315,23 @@ export ANDROID_HOME=/path/to/android-sdk
 ---
 
 ## 更新日志
+
+<details open>
+<summary><b>v2.4.2</b> (2026-07-30) — 检查更新查找不到新版修复</summary>
+
+### 检查更新查找不到新版 — 根因修复
+- **根因**：jsdelivr CDN 对 GitHub 仓库的缓存最长可达 12 小时以上，且 `?t=` 时间戳参数对 jsdelivr 的 `gh` 仓库缓存**完全无效**。检查更新代码把 jsdelivr 放在第一位优先用，结果拿到的 version.json 是 2.2.0 的旧缓存（versionCode=5），远小于用户当前版本（versionCode=15）→ `5 > 15` 为 false → 走「已是最新版」分支 → **查找不到新版**
+- **实测**：三个源同时验证，jsdelivr cdn 返回 2.2.0，jsdelivr fastly 返回 2.2.1，GitHub raw 返回正确的 2.4.1
+- **修复**：
+  - 源顺序调整：GitHub raw 优先（实时不缓存，永远是最新的），jsdelivr 降为兜底
+  - 新增脏缓存检测：若源返回的 versionCode 远小于当前版本，判定为 CDN 旧缓存并自动切换源
+  - 请求头加 `Cache-Control: no-cache`
+  - 失败提示更明确：显示具体失败原因（如「源返回旧版本 v2.2.0 (vc=5)，疑似CDN缓存，切换源」）
+
+### 版本信息
+- versionCode: 16 / versionName: 2.4.2
+
+</details>
 
 <details open>
 <summary><b>v2.4.1</b> (2026-07-30) — 音乐播放器核心 Bug 修复</summary>
