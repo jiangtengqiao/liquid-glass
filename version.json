@@ -1,6 +1,6 @@
 {
-  "version": "2.4.3",
-  "versionCode": 17,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.3/liquid-glass-v2.4.3.apk",
-  "changelog": "修复网易云扫码授权完就过期死循环(weapiPost移除手动Cookie header与cookieJar冲突+fetchAccount失败MUSIC_U cookie兜底+pollQrStatus ERROR重试2次)。资源包下载速度优化(buffer 8KB→256KB+分块4路并发)。交互外观包内容充实(92KB空包→13KB/35文件:15主题+6粒子+4玻璃+4音效+5流体)。5篇法律协议各扩充约4000字。"
+  "version": "2.4.4",
+  "versionCode": 18,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.4/liquid-glass-v2.4.4.apk",
+  "changelog": "全新4层强制层级资源包系统(基础资源→交互外观→核心功能补丁→高级体验初始化)，未下补丁包对应功能不可用且首页显示锁标记。核心功能补丁包门禁计算器/单位换算/二维码/颜色选择器/密码生成器；高级体验初始化包门禁音乐/日历/待办/笔记/健康/倒计时/指南针。网易云新增手机验证码登录(/weapi/sms/captcha/sent + /weapi/login/cellphone)与扫码登录Tab切换，自动预填平台账号绑定手机号。关于页资源管理升级4层补丁包独立卡片。"
 }
