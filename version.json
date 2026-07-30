@@ -1,6 +1,6 @@
 {
-  "version": "2.6.2",
-  "versionCode": 27,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.2/LiquidGlass-v2.6.2.apk",
-  "releaseNotes": "v2.6.2 - 修复关于页下载卡片UI穿模(标题/描述/状态文本被截断) + 音乐后台通知栏/锁屏控件(Media3自动生成,切后台仍可控制) + 拔耳机自动暂停 + 定时推送通知广告(15条文案池每90分钟随机推一条)"
+  "version": "2.6.3",
+  "versionCode": 28,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.3/LiquidGlass-v2.6.3.apk",
+  "releaseNotes": "v2.6.3 - 权限门槛(更新后强制申请所有权限否则不给用) + 广告文案池扩充至36条+频率提高到15分钟+不重复轮播 + 后台媒体通知修复(权限强制授予后Media3通知正常显示在通知栏顶部)"
 }
