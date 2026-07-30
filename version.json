@@ -1,6 +1,6 @@
 {
-  "version": "2.3.1",
-  "versionCode": 9,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.1/liquid-glass-v2.3.1.apk",
-  "changelog": "彻底修复资源包下载后未应用：新增FluidAssetLoader，流体纹理与粒子缓存真正驱动渲染；音频改用语义命名(rain.wav等)全部生效；资源包真正达到约1.5GB且全部被应用。"
+  "version": "2.3.2",
+  "versionCode": 10,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.2/liquid-glass-v2.3.2.apk",
+  "changelog": "修复下载报failed to connect to github超时：镜像源优先(ghproxy/cors/gh-proxy)快速failover，GitHub直连降为兜底，连接超时从20s缩短到8s。"
 }
