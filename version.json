@@ -1,6 +1,6 @@
 {
-  "version": "2.4.7",
-  "versionCode": 21,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.7/liquid-glass-v2.4.7.apk",
-  "changelog": "修复网易云热搜/搜索/歌单全部拉取不到的根因：weapi请求缺失客户端标识Cookie(os/osver/appver/channel等)，被服务端识别为非官方客户端触发反爬，热搜降级为推荐、搜索返回空result、用户歌单返回空(即便带MUSIC_U)。修复：weapiPost主动注入PC网页端客户端标识Cookie并合并登录态，UA改为PC端Chrome124与os=pc一致。参考网易云weapi权威文档(zousandian/NeteaseCloudMusicApi wiki)与NeteaseCloudMusicApi开源项目。"
+  "version": "2.4.8",
+  "versionCode": 22,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.8/liquid-glass-v2.4.8.apk",
+  "changelog": "修复客户端标识Cookie被OkHttp覆盖导致依旧全空的问题。v2.4.7虽在weapiPost手动设置Cookie header含客户端标识，但OkHttp BridgeInterceptor会用cookieJar.loadForRequest()返回值覆盖手动设置的Cookie header，而loadForRequest不含客户端标识，导致客户端标识被冲掉请求依旧裸奔触发反爬。修复：将客户端标识直接合并进cookieJar.loadForRequest返回值(客户端标识<持久化登录态<内存三层合并按name去重)，移除手动Cookie header，saveFromResponse跳过保存客户端标识避免污染。"
 }
