@@ -1,6 +1,6 @@
 {
-  "version": "2.4.8",
-  "versionCode": 22,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.8/liquid-glass-v2.4.8.apk",
-  "changelog": "修复客户端标识Cookie被OkHttp覆盖导致依旧全空的问题。v2.4.7虽在weapiPost手动设置Cookie header含客户端标识，但OkHttp BridgeInterceptor会用cookieJar.loadForRequest()返回值覆盖手动设置的Cookie header，而loadForRequest不含客户端标识，导致客户端标识被冲掉请求依旧裸奔触发反爬。修复：将客户端标识直接合并进cookieJar.loadForRequest返回值(客户端标识<持久化登录态<内存三层合并按name去重)，移除手动Cookie header，saveFromResponse跳过保存客户端标识避免污染。"
+  "version": "2.4.9",
+  "versionCode": 23,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.9/liquid-glass-v2.4.9.apk",
+  "changelog": "彻底修复网易云登录后歌单/搜索/歌曲全空的根因。三处致命bug一并修复：(1)CLIENT_COOKIE误含__csrf=空值+NMTID等动态cookie，且__csrf/NMTID被加入CLIENT_COOKIE_NAMES跳过名单，导致服务端Set-Cookie回写的真实__csrf token永远存不下来，所有需鉴权weapi接口带空__csrf被拒。修复：CLIENT_COOKIE只保留os/osver/appver/channel/wevt五个纯静态标识，动态cookie全部由服务端管理。(2)payload的csrf_token始终为空字符串，与cookie的__csrf不一致。修复：weapiPost自动从cookie提取__csrf注入payload的csrf_token字段。(3)旧版升级用户持久化无__csrf。修复：NeteaseTab拉歌单前先调fetchAccount预热触发服务端Set-Cookie __csrf。"
 }
