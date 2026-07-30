@@ -1,6 +1,6 @@
 {
-  "version": "2.4.6",
-  "versionCode": 20,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.6/liquid-glass-v2.4.6.apk",
-  "changelog": "修复网易云登录后无法拉取歌单/歌曲等全部信息的问题。根因：CookieJar.loadForRequest的if(list.isEmpty())条件致命bug——只要内存里有任何cookie(如发送验证码时存的NMTID)，就完全忽略持久化里的MUSIC_U，导致所有需鉴权接口不带登录态。修复：重写CookieJar为合并模式(按name去重，内存优先于持久化)，saveFromResponse改为合并而非覆盖；loginWithPhone成功后主动校验MUSIC_U落库并fetchAccount补全uid；userPlaylists增加uid有效性校验。"
+  "version": "2.4.7",
+  "versionCode": 21,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.7/liquid-glass-v2.4.7.apk",
+  "changelog": "修复网易云热搜/搜索/歌单全部拉取不到的根因：weapi请求缺失客户端标识Cookie(os/osver/appver/channel等)，被服务端识别为非官方客户端触发反爬，热搜降级为推荐、搜索返回空result、用户歌单返回空(即便带MUSIC_U)。修复：weapiPost主动注入PC网页端客户端标识Cookie并合并登录态，UA改为PC端Chrome124与os=pc一致。参考网易云weapi权威文档(zousandian/NeteaseCloudMusicApi wiki)与NeteaseCloudMusicApi开源项目。"
 }
