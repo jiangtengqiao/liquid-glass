@@ -1,6 +1,6 @@
 {
-  "version": "2.3.3",
-  "versionCode": 11,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.3/liquid-glass-v2.3.3.apk",
-  "changelog": "修复检查更新下载APK连接GitHub超时：APK下载走镜像(ghproxy/cors/gh-proxy)快速failover；versionCode不再硬编码，改从PackageManager读取，解决永远提示有新版的问题。"
+  "version": "2.3.4",
+  "versionCode": 12,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.4/liquid-glass-v2.3.4.apk",
+  "changelog": "修复版本号显示错误(关于页现读PackageManager不再硬编码)；修复资源包下载后仅670MB(改分块下载+逐块校验确保1.5GB完整)；修复主题切换对比度不足(glassSurface主题感知)；新增iOS液态玻璃系列主题。"
 }
