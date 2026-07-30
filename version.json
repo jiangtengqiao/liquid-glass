@@ -1,6 +1,6 @@
 {
-  "version": "2.6.1",
-  "versionCode": 26,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.1/LiquidGlass-v2.6.1.apk",
-  "releaseNotes": "v2.6.1 - 单位换算闪退修复(Material3 DropdownMenu) + 音乐多元化(私人FM/新歌速递/相似歌曲/DJ电台/MV/新碟上架) + 播放器控制台状态栏(动画均衡器+流动marquee歌词+实时状态) + 下载实时文件显示(逐文件推送) + 全局下载控制台(暂停/恢复/取消) + 断点续传缓存(Range请求) + 通知系统(更新提醒/内容推荐/下载进度/权限申请) + 液态玻璃水滴状流态UI"
+  "version": "2.6.2",
+  "versionCode": 27,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.2/LiquidGlass-v2.6.2.apk",
+  "releaseNotes": "v2.6.2 - 修复关于页下载卡片UI穿模(标题/描述/状态文本被截断) + 音乐后台通知栏/锁屏控件(Media3自动生成,切后台仍可控制) + 拔耳机自动暂停 + 定时推送通知广告(15条文案池每90分钟随机推一条)"
 }
