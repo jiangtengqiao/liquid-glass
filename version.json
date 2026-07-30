@@ -1,6 +1,6 @@
 {
-  "version": "2.4.0",
-  "versionCode": 14,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.0/liquid-glass-v2.4.0.apk",
-  "changelog": "全新音乐播放器(网易云扫码登录+本地+多平台跳转+Media3后台播放+逐字歌词+播放队列+搜索历史热搜)；二维码/条形码重写(ZXing库)；单位换算实时汇率API；壁纸画廊Canvas重渲染预览一致；待办清单本地持久化；日历事件提醒(AlarmManager精确闹钟+通知)；颜色选择器Tab改名；移除声波可视化；新增法律与公告中心(5篇长文协议:隐私/服务/免责/第三方/儿童)。资源分块仍托管在v2.3.4 release。"
+  "version": "2.4.1",
+  "versionCode": 15,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.1/liquid-glass-v2.4.1.apk",
+  "changelog": "修复网易云扫码二维码加载不出来(NetEaseApiClient lateinit竞态根因+ContextProvider全局上下文自愈+MainActivity预初始化)；QrLoginView重写(失败自动重试3次+网络失败明确提示+不再误显示已过期)；修复退出登录后UI不刷新(登录态提升为Compose state+loginTick计数器触发顶部栏VIP徽章与网易云Tab重组)；修复第三方音乐App检测是否安装错误(AndroidManifest新增queries声明解决Android 11+包可见性限制+双重检测+跳转加固)；退出登录同步清空播放队列。资源分块仍托管在v2.3.4 release。"
 }

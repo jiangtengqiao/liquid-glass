@@ -1,7 +1,7 @@
 # 液态玻璃 · 灵动工具箱
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.4.0-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.4.1-00D4FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
   <img src="https://img.shields.io/badge/APK-11MB-00E5A0?style=for-the-badge" alt="APK Size">
   <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
-  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.0/liquid-glass-v2.4.0.apk">直接下载 APK</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.1/liquid-glass-v2.4.1.apk">直接下载 APK</a> ·
   <a href="#-更新日志">更新日志</a> ·
   <a href="#-技术架构">技术架构</a>
 </p>
@@ -315,6 +315,33 @@ export ANDROID_HOME=/path/to/android-sdk
 ---
 
 ## 更新日志
+
+<details open>
+<summary><b>v2.4.1</b> (2026-07-30) — 音乐播放器核心 Bug 修复</summary>
+
+### 网易云扫码二维码加载不出来 — 根因修复
+- **根因**：`NetEaseApiClient` 用 `lateinit var appContext`，在 `MusicScreen` 的 `LaunchedEffect(Unit)` 里异步 init，与 `QrLoginView` 的 `createQrKey()` 存在竞态。首请求触发时 `appContext` 未初始化 → `UninitializedPropertyAccessException` 被 catch 吞掉 → 返回 null → 二维码永远出不来
+- **修复**：`appContext` 改 nullable + `ensureContext()` 自愈兜底；新增 `ContextProvider` 全局上下文；`MainActivity.onCreate` 同步预初始化 `NetEaseApiClient`，彻底消除竞态
+
+### QrLoginView 重写
+- 生成 key 失败自动重试 3 次（间隔 1.5s）
+- 网络失败明确提示「生成失败，请检查网络」+ 重试按钮
+- 不再误显示「二维码已过期」
+
+### 退出登录后 UI 不刷新 — 修复
+- 登录态提升为 Compose state（`loggedIn`）+ `loginTick` 计数器
+- 顶部栏 VIP 徽章、网易云 Tab 登录/退出即时重组
+- 退出登录同步清空播放队列
+
+### 第三方音乐 App 检测是否安装错误 — 修复
+- **根因**：Android 11+ (API 30+) 默认包可见性限制，`getPackageInfo` 对未声明 `<queries>` 的第三方 App 一律返回 NameNotFoundException → 永远显示「未安装」
+- **修复**：AndroidManifest 新增 `<queries>` 声明（酷狗/汽水/QQ音乐/网易云 + https intent）
+- 跳转加固：双重检测（`getPackageInfo` + `getLaunchIntentForPackage`）+ launchIntent 失败回退网页 + try-catch 兜底
+
+### 版本信息
+- versionCode: 15 / versionName: 2.4.1
+
+</details>
 
 <details open>
 <summary><b>v2.4.0</b> (2026-07-30) — 音乐播放器 + 全功能复盘修缮 + 法律公告中心</summary>
