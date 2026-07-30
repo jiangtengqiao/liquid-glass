@@ -1,7 +1,7 @@
 # 液态玻璃 · 灵动工具箱
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.4.2-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.4.3-00D4FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
   <img src="https://img.shields.io/badge/APK-11MB-00E5A0?style=for-the-badge" alt="APK Size">
   <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
-  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.2/liquid-glass-v2.4.2.apk">直接下载 APK</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.3/liquid-glass-v2.4.3.apk">直接下载 APK</a> ·
   <a href="#-更新日志">更新日志</a> ·
   <a href="#-技术架构">技术架构</a>
 </p>
@@ -315,6 +315,30 @@ export ANDROID_HOME=/path/to/android-sdk
 ---
 
 ## 更新日志
+
+<details open>
+<summary><b>v2.4.3</b> (2026-07-30) — 网易云扫码修复+下载优化+交互包充实+协议扩充</summary>
+
+### 网易云扫码授权完就过期死循环 — 根因修复
+- **根因1**：`weapiPost` 手动设 Cookie header 与 OkHttp `cookieJar` 冲突（OkHttp BridgeInterceptor 会覆盖手动 Cookie）
+- **根因2**：`fetchAccount` 失败时不检查 MUSIC_U cookie 是否已落库 → 登录态丢失
+- **根因3**：`pollQrStatus` 网络失败直接 ERROR，UI 显示"重新生成"（用户误以为"过期"）
+- **修复**：移除手动 Cookie header（cookieJar 全自动管理）；fetchAccount 失败时 MUSIC_U 兜底；ERROR 重试 2 次
+
+### 资源包下载速度优化
+- buffer 8KB → 256KB（减少系统调用）
+- 分块下载 4 路并发（充分利用带宽，解决几十KB/s问题）
+
+### 交互外观包内容充实
+- 从 92KB 空包 → 13KB/35 文件（15主题+6粒子+4玻璃+4音效+5流体预设）
+
+### 法律协议扩充
+- 5 篇协议各 +4000 字（数据安全/跨境传输/Cookie详情/账号安全/仲裁/不可抗力/SDK收集/家长监护等）
+
+### 版本信息
+- versionCode: 17 / versionName: 2.4.3
+
+</details>
 
 <details open>
 <summary><b>v2.4.2</b> (2026-07-30) — 检查更新查找不到新版修复</summary>

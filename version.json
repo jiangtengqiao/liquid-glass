@@ -1,6 +1,6 @@
 {
-  "version": "2.4.2",
-  "versionCode": 16,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.2/liquid-glass-v2.4.2.apk",
-  "changelog": "修复检查更新查找不到新版：jsdelivr CDN对gh仓库缓存最长12h+且?t=时间戳无效，曾导致拿到2.2.0旧缓存(versionCode=5)而误判已是最新。检查更新源顺序调整：GitHub raw优先(实时不缓存)，jsdelivr降为兜底。新增脏缓存检测：若源返回versionCode远小于当前版本，判定为CDN旧缓存并切换源。请求头加Cache-Control: no-cache。"
+  "version": "2.4.3",
+  "versionCode": 17,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.3/liquid-glass-v2.4.3.apk",
+  "changelog": "修复网易云扫码授权完就过期死循环(weapiPost移除手动Cookie header与cookieJar冲突+fetchAccount失败MUSIC_U cookie兜底+pollQrStatus ERROR重试2次)。资源包下载速度优化(buffer 8KB→256KB+分块4路并发)。交互外观包内容充实(92KB空包→13KB/35文件:15主题+6粒子+4玻璃+4音效+5流体)。5篇法律协议各扩充约4000字。"
 }
