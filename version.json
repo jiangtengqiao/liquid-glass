@@ -1,6 +1,6 @@
 {
-  "version": "2.3.2",
-  "versionCode": 10,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.2/liquid-glass-v2.3.2.apk",
-  "changelog": "修复下载报failed to connect to github超时：镜像源优先(ghproxy/cors/gh-proxy)快速failover，GitHub直连降为兜底，连接超时从20s缩短到8s。"
+  "version": "2.3.3",
+  "versionCode": 11,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.3/liquid-glass-v2.3.3.apk",
+  "changelog": "修复检查更新下载APK连接GitHub超时：APK下载走镜像(ghproxy/cors/gh-proxy)快速failover；versionCode不再硬编码，改从PackageManager读取，解决永远提示有新版的问题。"
 }
