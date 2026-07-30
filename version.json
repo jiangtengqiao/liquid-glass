@@ -1,6 +1,6 @@
 {
-  "version": "2.4.4",
-  "versionCode": 18,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.4/liquid-glass-v2.4.4.apk",
-  "changelog": "全新4层强制层级资源包系统(基础资源→交互外观→核心功能补丁→高级体验初始化)，未下补丁包对应功能不可用且首页显示锁标记。核心功能补丁包门禁计算器/单位换算/二维码/颜色选择器/密码生成器；高级体验初始化包门禁音乐/日历/待办/笔记/健康/倒计时/指南针。网易云新增手机验证码登录(/weapi/sms/captcha/sent + /weapi/login/cellphone)与扫码登录Tab切换，自动预填平台账号绑定手机号。关于页资源管理升级4层补丁包独立卡片。"
+  "version": "2.4.5",
+  "versionCode": 19,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.5/liquid-glass-v2.4.5.apk",
+  "changelog": "紧急修复网易云手机验证码登录bug：登录接口/weapi/login/cellphone参数名误用cellphone+ctcode，正确应为phone+countrycode（与发送验证码接口字段名不一致），导致验证码再正确也被判为错误/过期。已修正参数名并区分503(验证码错误)/502(账号错误)/505(参数错误)错误码。"
 }
