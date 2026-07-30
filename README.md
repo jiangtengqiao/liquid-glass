@@ -1,9 +1,9 @@
 # 液态玻璃 · 灵动工具箱
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.4.3-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.5.0-00D4FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
-  <img src="https://img.shields.io/badge/APK-11MB-00E5A0?style=for-the-badge" alt="APK Size">
+  <img src="https://img.shields.io/badge/APK-16MB-00E5A0?style=for-the-badge" alt="APK Size">
   <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
   <img src="https://img.shields.io/badge/工具模块-18个-3366FF?style=for-the-badge" alt="Tools">
   <img src="https://img.shields.io/badge/license-MIT-FF6B35?style=for-the-badge" alt="License">
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
-  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.3/liquid-glass-v2.4.3.apk">直接下载 APK</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.5.0/LiquidGlass-v2.5.0.apk">直接下载 APK</a> ·
   <a href="#-更新日志">更新日志</a> ·
   <a href="#-技术架构">技术架构</a>
 </p>
@@ -263,16 +263,17 @@ export ANDROID_HOME=/path/to/android-sdk
 ./gradlew assembleRelease
 
 # APK 输出路径
-# app/build/outputs/apk/release/app-release.apk
+# app/build/outputs/apk/release/LiquidGlass-v2.5.0.apk
 ```
 
-### 发布流程
+### 发布流程 (v2.5.0+)
 
 1. 构建 APK → `./gradlew assembleRelease`
-2. 准备资源包 → 打包 `resources.zip`
-3. 创建 GitHub Release → `gh release create vX.Y.Z`
-4. 上传 APK + 资源包 → `gh release upload`
-5. 更新 `version.json` → `git push`
+2. 重命名 APK → `LiquidGlass-v2.5.0.apk`
+3. 创建 GitHub Release → `gh release create v2.5.0 ./LiquidGlass-v2.5.0.apk --title "v2.5.0"`
+4. 更新 `version.json`（修改 `versionCode`、`version`、`downloadUrl`）→ `git push`
+5. 4层资源包上传：`resources.zip`(v2.3.4)、`interaction-pack.zip`(v2.3.4)、`patch-core.zip`(v2.3.4)、`init-premium.zip`(v2.3.4) 已存在则无需重传
+6. 用户打开应用 → 关于页 → 检查更新 → 自动检测到 v2.5.0
 
 ---
 
@@ -315,6 +316,40 @@ export ANDROID_HOME=/path/to/android-sdk
 ---
 
 ## 更新日志
+
+<details open>
+<summary><b>v2.5.0</b> (2026-07-30) — 4层资源层级系统 + 网易云验证码登录 + 功能门禁</summary>
+
+### 4层强制层级资源包系统
+- 全新4层强制层级架构：基础资源包 → 交互外观包 → 核心功能补丁包(patch-core) → 高级体验初始化包(init-premium)
+- 未下载对应补丁包则对应功能不可用，首页显示锁标记+下载提示
+- 核心功能门禁：计算器/单位换算/二维码/颜色选择器/密码生成器 需patch-core包
+- 高级体验门禁：音乐/日历/待办/笔记/健康计算/倒计时/指南针 需init-premium包
+- 关于页4层补丁包独立卡片UI，每张显示功能解锁范围与下载进度
+
+### 网易云手机验证码登录
+- 新增手机验证码登录方式：对接 /weapi/sms/captcha/sent 发短信 + /weapi/login/cellphone 验证码登录
+- 登录页Tab切换：扫码登录 / 手机验证码登录
+- 自动预填上次绑定手机号，平台账号绑定手机校验
+
+### 网易云数据拉取修复
+- 修复Cookie管理：合并客户端标识+持久化登录态，按name去重，确保MUSIC_U/__csrf正确发送
+- 添加X-Real-IP: 122.228.19.64 解决地域版权校验导致内容接口返回空
+- 自动注入csrf_token，payload与Cookie一致，避免301 NOT LOGIN
+- fetchAccount兜底保留已有userId，避免uid=0导致歌单为空
+
+### 版本信息
+- versionCode: 24 / versionName: 2.5.0
+
+</details>
+
+<details open>
+<summary><b>v2.4.4</b> (2026-07-30) — 4层资源包系统上线</summary>
+
+### 版本信息
+- versionCode: 23 / versionName: 2.4.4
+
+</details>
 
 <details open>
 <summary><b>v2.4.3</b> (2026-07-30) — 网易云扫码修复+下载优化+交互包充实+协议扩充</summary>

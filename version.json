@@ -1,6 +1,6 @@
 {
-  "version": "2.4.9",
-  "versionCode": 23,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.9/liquid-glass-v2.4.9.apk",
-  "changelog": "彻底修复网易云登录后歌单/搜索/歌曲全空的根因。三处致命bug一并修复：(1)CLIENT_COOKIE误含__csrf=空值+NMTID等动态cookie，且__csrf/NMTID被加入CLIENT_COOKIE_NAMES跳过名单，导致服务端Set-Cookie回写的真实__csrf token永远存不下来，所有需鉴权weapi接口带空__csrf被拒。修复：CLIENT_COOKIE只保留os/osver/appver/channel/wevt五个纯静态标识，动态cookie全部由服务端管理。(2)payload的csrf_token始终为空字符串，与cookie的__csrf不一致。修复：weapiPost自动从cookie提取__csrf注入payload的csrf_token字段。(3)旧版升级用户持久化无__csrf。修复：NeteaseTab拉歌单前先调fetchAccount预热触发服务端Set-Cookie __csrf。"
+  "version": "2.5.0",
+  "versionCode": 24,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.5.0/LiquidGlass-v2.5.0.apk",
+  "releaseNotes": "v2.5.0 - 4层资源层级系统 + 网易云验证码登录 + 功能门禁"
 }
