@@ -1,6 +1,6 @@
 {
-  "version": "2.3.5",
-  "versionCode": 13,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.5/liquid-glass-v2.3.5.apk",
-  "changelog": "修复镜像顺序：ghproxy.net对大文件截断(此前下载仅670MB)，改用cors.isteed.cc与gh-proxy.com优先(实测可完整传输90MB分块)。资源分块托管在v2.3.4 release不变。"
+  "version": "2.4.0",
+  "versionCode": 14,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.4.0/liquid-glass-v2.4.0.apk",
+  "changelog": "全新音乐播放器(网易云扫码登录+本地+多平台跳转+Media3后台播放+逐字歌词+播放队列+搜索历史热搜)；二维码/条形码重写(ZXing库)；单位换算实时汇率API；壁纸画廊Canvas重渲染预览一致；待办清单本地持久化；日历事件提醒(AlarmManager精确闹钟+通知)；颜色选择器Tab改名；移除声波可视化；新增法律与公告中心(5篇长文协议:隐私/服务/免责/第三方/儿童)。资源分块仍托管在v2.3.4 release。"
 }
