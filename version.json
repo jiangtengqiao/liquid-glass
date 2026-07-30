@@ -1,16 +1,6 @@
 {
-  "version": "2.1.1",
+  "version": "2.2.0",
   "versionCode": 5,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/liquid-glass-v2.1.1.apk",
-  "resourceUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/resources.zip",
-  "interactionUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.1.1/interaction-pack.zip",
-  "releaseDate": "2026-07-29",
-  "changelog": [
-    "修复计算器科学模式排版穿模问题",
-    "修复检查更新报错：改用JSON解析+多URL重试+重定向支持",
-    "修复资源包下载失败：增加超时时间和重试机制",
-    "关于页资源包支持单独下载和强制重下",
-    "壁纸画廊新增已下载资源分类",
-    "时钟等UI排版全面优化"
-  ]
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.2.0/liquid-glass-v2.2.0.apk",
+  "changelog": "修复计算器科学模式穿模、检查更新报错、资源包下载失败。新增jsdelivr CDN和ghproxy镜像多源回退。"
 }
