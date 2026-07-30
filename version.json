@@ -1,6 +1,6 @@
 {
-  "version": "2.2.1",
-  "versionCode": 6,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.2.1/liquid-glass-v2.2.1.apk",
-  "changelog": "热修复：修复资源包下载报download already in progress错误。拆分下载锁为基础/交互独立锁，跳过启动加载页时自动重置下载状态。"
+  "version": "2.2.2",
+  "versionCode": 7,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.2.2/liquid-glass-v2.2.2.apk",
+  "changelog": "修复检查更新因CDN缓存显示旧版本问题。version.json请求加时间戳绕过缓存，GitHub raw优先。"
 }
