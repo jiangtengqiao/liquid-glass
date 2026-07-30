@@ -1,6 +1,6 @@
 {
-  "version": "2.5.0",
-  "versionCode": 24,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.5.0/LiquidGlass-v2.5.0.apk",
-  "releaseNotes": "v2.5.0 - 4层资源层级系统 + 网易云验证码登录 + 功能门禁"
+  "version": "2.6.0",
+  "versionCode": 25,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.0/LiquidGlass-v2.6.0.apk",
+  "releaseNotes": "v2.6.0 - 音乐发现页(推荐/榜单/分类) + 加入播放队列 + 7层资源包系统 + 自动更新弹窗 + 单位换算闪退修复 + 计算器UI紧凑化 + 下载持久化 + 文件详情实时显示"
 }

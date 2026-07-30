@@ -1,10 +1,10 @@
 # 液态玻璃 · 灵动工具箱
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.5.0-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.6.0-00D4FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
   <img src="https://img.shields.io/badge/APK-16MB-00E5A0?style=for-the-badge" alt="APK Size">
-  <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
+  <img src="https://img.shields.io/badge/资源包-7层-FF3B8B?style=for-the-badge" alt="Resource Pack">
   <img src="https://img.shields.io/badge/工具模块-18个-3366FF?style=for-the-badge" alt="Tools">
   <img src="https://img.shields.io/badge/license-MIT-FF6B35?style=for-the-badge" alt="License">
 </p>
@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
-  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.5.0/LiquidGlass-v2.5.0.apk">直接下载 APK</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.0/LiquidGlass-v2.6.0.apk">直接下载 APK</a> ·
   <a href="#-更新日志">更新日志</a> ·
   <a href="#-技术架构">技术架构</a>
 </p>
@@ -46,7 +46,7 @@
 |------|----------|----------|
 | **时钟·天气** | 实时时钟 + 全球天气 + 城市搜索 + 世界时钟 | IP 定位秒开 + GPS 后台静默更新；Open-Meteo API；10 个国际城市实时时钟 |
 | **科学计算器** | 基础四则 + 科学计算 + 记忆功能 + 历史记录 | 三角函数/对数/指数/阶乘/幂运算；MC/MR/M+/M-/MS 五键记忆；RAD/DEG 切换；2nd 功能层 |
-| **音乐播放器** | 网易云音乐 + 本地音乐 + 多平台跳转 | 扫码登录网易云；Media3 后台播放+通知栏+锁屏控件；播放队列管理；逐字歌词与模糊渐变动效；搜索历史+热搜 |
+| **音乐播放器** | 网易云音乐 + 本地音乐 + 多平台跳转 + 发现页 | 扫码/验证码登录网易云；Media3 后台播放+通知栏+锁屏控件；播放队列管理(含加入队列)；逐字歌词与模糊渐变动效；搜索历史+热搜；**发现页(推荐歌曲/推荐歌单/各排行榜/歌单分类)** |
 | **待办清单** | 任务管理 | 液态玻璃卡片式管理；滑动交互；本地持久化(TodoStore) |
 | **倒计时秒表** | 计时与计次 | 毫秒级精度 |
 | **日历日程** | 事件管理 + 提醒 | 月度视图；AlarmManager 精确闹钟；5种预设+自定义提醒；通知弹窗 |
@@ -189,12 +189,12 @@ LiquidGlassApp/
 
 ## 资源加载机制
 
-应用采用"先安装、后加载"的策略：
+应用采用"先安装、后加载"的策略，构建 **7 层强制层级资源包系统**：
 
 ### 启动流程
 
 ```
-用户安装 APK (11MB)
+用户安装 APK (16MB)
     ↓
 首次启动 → LoadingScreen
     ↓
@@ -203,22 +203,30 @@ LiquidGlassApp/
 ┌── 已安装 → 跳过下载 → 进入主界面
 └── 未安装 → 连接 GitHub Release
               ↓
-         下载 resources.zip (530MB)
+         分阶段下载 7 层资源包
               ↓
-         显示进度条 + 下载速度
+         显示进度条 + 下载速度（节流 500ms，稳定不跳动）
               ↓
-         解压到 filesDir/resources/
+         解压到 filesDir/resources/ 对应子目录
               ↓
          写入 .installed 标记
               ↓
          进入主界面
 ```
 
-### 资源包内容
+### 7 层资源包层级
 
-- **raw/**: 10 个白噪音音频文件（WAV 格式）
-- **assets/**: 25 个程序化资源数据文件（每个 20MB）
-- **assets/**: 多张高清壁纸图片（PNG 格式）
+| 阶段 | 包名 | 目录 | 内容 | 功能门禁 |
+|------|------|------|------|----------|
+| 1/7 | 基础资源包 | `resources/` | 白噪音音频 + 程序化艺术资源 + 壁纸 | 全局基础 |
+| 2/7 | 交互外观包 | `interaction/` | 主题/粒子/玻璃预设/音效/流体 | 视觉体验 |
+| 3/7 | 核心功能补丁包 | `patch_core/` | 计算器/单位换算/二维码/颜色/密码 核心逻辑 | 核心工具解锁 |
+| 4/7 | 高级体验初始化包 | `init_premium/` | 音乐/日历/待办/笔记/健康/倒计时/指南针 高级模块 | 高级功能解锁 |
+| 5/7 | 安装包补丁 | `patch_install/` | APK 增量补丁 + 安装配置 | 安装优化 |
+| 6/7 | 预加载包 | `preload/` | 启动预加载资源 + 缓存预热 | 启动加速 |
+| 7/7 | 预处理包 | `preprocess/` | 数据预处理 + 索引构建 | 运行时优化 |
+
+> 每个包均包含实际文件内容（非空包），关于页提供独立卡片显示安装状态、文件大小，并可展开查看已加载/未加载的详细文件列表（路径+大小+修改时间）。
 
 ### 容错机制
 
@@ -226,18 +234,22 @@ LiquidGlassApp/
 - 支持"跳过"按钮直接进入应用（部分功能不可用）
 - 下载失败时显示详细错误信息 + 重试按钮
 - 断点续传支持（通过 HTTP Range 请求）
+- **下载持久化**：使用全局协程作用域，离开安装页面/切换功能/最小化后台不杀进程时下载继续进行，进度通过 StateFlow 持续跟踪
 
 ---
 
 ## 更新机制
 
-应用内置自动更新检查功能：
+应用内置自动更新检查功能（v2.6.0 起升级为启动时模态框弹窗）：
 
-1. **更新检测**：从 GitHub Raw 获取 `version.json`，比对 `versionCode`
-2. **多 URL 尝试**：优先使用 GitHub Raw URL，失败时自动切换备用 URL
-3. **增量下载**：检测到新版本后，从 GitHub Release 下载最新 APK
-4. **静默安装**：下载完成后通过 FileProvider 触发系统安装器
-5. **版本文件**：[version.json](https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/version.json)
+1. **启动自动检测**：应用打开时自动从 GitHub Raw 获取 `version.json`，比对 `versionCode`
+2. **模态框弹窗**：检测到新版本时弹出更新模态框，显示版本号、更新日志和「立即更新」按钮
+3. **多 URL 尝试**：优先使用 GitHub Raw URL，失败时自动切换 jsdelivr 备用 URL
+4. **解除下载速率限制**：APK 下载使用全速带宽，多镜像并发
+5. **后台持久下载**：下载过程不阻塞 UI，离开页面/切换功能/最小化后继续下载
+6. **稳定进度显示**：进度更新节流 500ms，固定高度布局，杜绝跳动
+7. **自动安装**：下载完成后通过 FileProvider 触发系统安装器
+8. **版本文件**：[version.json](https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/version.json)
 
 ---
 
@@ -263,17 +275,17 @@ export ANDROID_HOME=/path/to/android-sdk
 ./gradlew assembleRelease
 
 # APK 输出路径
-# app/build/outputs/apk/release/LiquidGlass-v2.5.0.apk
+# app/build/outputs/apk/release/LiquidGlass-v2.6.0.apk
 ```
 
-### 发布流程 (v2.5.0+)
+### 发布流程 (v2.6.0+)
 
 1. 构建 APK → `./gradlew assembleRelease`
-2. 重命名 APK → `LiquidGlass-v2.5.0.apk`
-3. 创建 GitHub Release → `gh release create v2.5.0 ./LiquidGlass-v2.5.0.apk --title "v2.5.0"`
+2. 重命名 APK → `LiquidGlass-v2.6.0.apk`
+3. 创建 GitHub Release → `gh release create v2.6.0 ./LiquidGlass-v2.6.0.apk --title "v2.6.0"`
 4. 更新 `version.json`（修改 `versionCode`、`version`、`downloadUrl`）→ `git push`
-5. 4层资源包上传：`resources.zip`(v2.3.4)、`interaction-pack.zip`(v2.3.4)、`patch-core.zip`(v2.3.4)、`init-premium.zip`(v2.3.4) 已存在则无需重传
-6. 用户打开应用 → 关于页 → 检查更新 → 自动检测到 v2.5.0
+5. 7层资源包上传：`resources.zip`、`interaction-pack.zip`、`patch-core.zip`、`init-premium.zip`、`patch-install.zip`、`preload.zip`、`preprocess.zip` 已存在则无需重传
+6. 用户打开应用 → 启动时自动检测新版 → 弹出模态框 → 点击「立即更新」→ 后台下载并安装 v2.6.0
 
 ---
 
@@ -316,6 +328,54 @@ export ANDROID_HOME=/path/to/android-sdk
 ---
 
 ## 更新日志
+
+<details open>
+<summary><b>v2.6.0</b> (2026-07-30) — 音乐发现页 + 加入播放队列 + 7层资源包 + 自动更新弹窗 + 计算器UI紧凑化</summary>
+
+### 音乐板块扩展
+- **全新「发现」Tab**：聚合推荐歌曲、推荐歌单、各榜单，一屏直达全网热门内容
+- **推荐歌曲**：接入网易云 `/weapi/personalized/newsong`，横向滑动卡片流，点击即播
+- **推荐歌单**：接入 `/weapi/personalized/playlist`，横向卡片流，点击进入歌单详情
+- **各排行榜**：接入 `/weapi/toplist`，列出全部官方榜单（飙升榜/新歌榜/热歌榜/欧美榜等），点击查看榜单内歌曲
+- **歌曲分类**：歌单分类接口 `/weapi/playlist/catalogue`，支持按语种/风格/场景/情感/主题筛选
+- **加入播放队列**：每首歌、每个歌单均可「加入播放队列」（单首/批量），队列尾部追加，不打断当前播放；VIP/无版权歌曲入队时给出明确提示
+
+### 7 层强制层级资源包系统（从 4 层升级）
+- 在原有 4 层（基础/交互/核心补丁/高级初始化）基础上，**新增 3 层**：
+  - **阶段 5/7 安装包补丁**（patch-install）：APK 增量补丁 + 安装配置
+  - **阶段 6/7 预加载包**（preload）：启动预加载资源 + 缓存预热
+  - **阶段 7/7 预处理包**（preprocess）：数据预处理 + 索引构建
+- **每个安装包实打实有内容**：全部 7 层包均包含实际文件（非空包），无虚假占位
+- **实时文件详情显示**：所有安装包（含已加载/未加载）均可在关于页展开查看详细文件列表（相对路径 + 文件大小 + 修改时间），加载状态实时刷新
+- 关于页 7 层补丁包独立卡片 UI，每张显示阶段编号、安装状态、文件大小、功能解锁范围与下载进度
+
+### 自动更新弹窗
+- **启动时自动检测**：应用打开即拉取 version.json，比对 versionCode
+- **模态框弹窗**：检测到新版本弹出居中模态框，显示新版本号、更新日志、「立即更新」按钮
+- **解除下载速率限制**：APK 下载全速带宽，多镜像并发，不再限速
+- **下载持久化**：使用全局协程作用域（globalDownloadScope），离开安装页面、点击其他功能、仅最小化未杀后台时下载继续进行，进度通过 StateFlow 持续跟踪
+- **稳定进度显示**：进度更新节流至 500ms，固定高度布局，彻底解决「一直在那里跳」的显示混乱问题
+- **自动安装**：下载完成通过 FileProvider 触发系统安装器
+
+### 单位换算闪退修复
+- **根因**：货币单位列表为空时，`coerceIn(0, units.lastIndex)` 中 `lastIndex = -1` 导致 `IndexOutOfBoundsException` 闪退
+- **修复**：引入 `safeUnits` 兜底（空列表时返回 `UnitDef("—", "—", 1.0)`），`fromUnit`/`toUnit`/`onCategoryChange` 全部走安全索引，杜绝越界
+
+### 计算器 UI 紧凑化
+- **按钮过大问题修复**：aspectRatio 由 1.1f → 1.6f（普通键）/ 1.4f（等号键），按钮更扁更紧凑
+- **一屏装完不滑动**：移除滚动布局，科学计算 + 数字键盘 + 记忆键全部一屏显示
+- **字体优化**：多字符键 13sp / 单字符键 17sp，间距收紧，整体视觉更舒适
+
+### UI 排版优化
+- 关于页 7 层资源包卡片重新排版，文件详情支持展开/收起
+- 更新弹窗模态框居中、固定高度，进度条 + 速度 + 状态文本一行排布
+
+### 版本信息
+- versionCode: 25 / versionName: 2.6.0
+- APK 大小：16MB
+- 下载链接：[LiquidGlass-v2.6.0.apk](https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.6.0/LiquidGlass-v2.6.0.apk)
+
+</details>
 
 <details open>
 <summary><b>v2.5.0</b> (2026-07-30) — 4层资源层级系统 + 网易云验证码登录 + 功能门禁</summary>
