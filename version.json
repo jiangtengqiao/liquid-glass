@@ -1,6 +1,6 @@
 {
-  "version": "2.8.3",
-  "versionCode": 44,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.3/LiquidGlass-v2.8.3.apk",
-  "releaseNotes": "v2.8.3 - 修复APK打包问题(v2.8.2编译缓存损坏导致音乐歌词设置页/秒表修复/指南针修复/通知跳转等功能未编入APK，本次clean全量重新编译)；包含v2.8.1全部功能(歌词设置7项+秒表SystemClock+指南针ROTATION_VECTOR+通知跳转AppRouter)+v2.8.2闪退修复"
+  "version": "2.8.5",
+  "versionCode": 46,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.5/LiquidGlass-v2.8.5.apk",
+  "releaseNotes": "v2.8.5 - 指南针核心Bug修复(hasReceivedSensorData被加速度计误设true导致超时检测永不触发,指南针永远卡在'正在等待传感器数据')+通知推送修复(首条立即推送0延迟+频道升级IMPORTANCE_HIGH弹横幅)+通知点击黑屏根治(AppRouter volatile备份+首次组合兜底消费)+LyricsSettings崩溃修复+倒计时漂移修复(SystemClock真实时间戳)+秒表O(n²)性能修复+媒体通知FLAG_ACTIVITY_NEW_TASK+手电筒修复"
 }
