@@ -1,6 +1,6 @@
 {
-  "version": "2.8.6",
-  "versionCode": 47,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.6/LiquidGlass-v2.8.6.apk",
-  "releaseNotes": "v2.8.6 - 指南针终极修复(TYPE_ROTATION_VECTOR存在但不报告数据时磁力计没注册导致无fallback,改为始终注册磁力计+accel+mag兜底)+通知美化(自定义RemoteViews渐变背景+色条+标签徽章+时间+点击查看)+通知可靠性(立即推送+HIGH优先级弹横幅)"
+  "version": "2.8.7",
+  "versionCode": 48,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.7/LiquidGlass-v2.8.7.apk",
+  "releaseNotes": "v2.8.7 - 指南针终极修复(角度平滑用Animatable+最短角路径插值,解决穿越正北时指针反向旋转358°乱转)+动画无缝循环终极修复(用真实经过时间withFrameNanos驱动,永不重启,所有sin/cos自然连续,彻底消除割裂)+多线程下载进度条反复横跳修复(AtomicReference+CAS+max只增不减+200ms节流)"
 }
