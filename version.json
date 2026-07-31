@@ -1,6 +1,6 @@
 {
-  "version": "2.8.1",
-  "versionCode": 42,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.1/LiquidGlass-v2.8.1.apk",
-  "releaseNotes": "v2.8.1 - 修复秒表走太快(SystemClock真实时间戳)；修复指南针无法使用(ROTATION_VECTOR融合传感器+缺失提示)；修复通知广告从未出现(activate条件bug)+频次提升；通知点击直达对应功能页(AppRouter路由)；音乐歌词设置页(字体/主题色/时间偏移/字号/行间距/翻译/背景7项)"
+  "version": "2.8.2",
+  "versionCode": 43,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.2/LiquidGlass-v2.8.2.apk",
+  "releaseNotes": "v2.8.2 - 修复点击通知进App偶发闪退(MediaController连接失败时release抛Service not registered，全局捕获器识别并吞掉此良性异常)；MediaController连接失败后支持重连(原防重逻辑卡死)；release防御性try-catch"
 }
