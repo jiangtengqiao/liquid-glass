@@ -1,6 +1,6 @@
 {
-  "version": "2.8.2",
-  "versionCode": 43,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.2/LiquidGlass-v2.8.2.apk",
-  "releaseNotes": "v2.8.2 - 修复点击通知进App偶发闪退(MediaController连接失败时release抛Service not registered，全局捕获器识别并吞掉此良性异常)；MediaController连接失败后支持重连(原防重逻辑卡死)；release防御性try-catch"
+  "version": "2.8.3",
+  "versionCode": 44,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.3/LiquidGlass-v2.8.3.apk",
+  "releaseNotes": "v2.8.3 - 修复APK打包问题(v2.8.2编译缓存损坏导致音乐歌词设置页/秒表修复/指南针修复/通知跳转等功能未编入APK，本次clean全量重新编译)；包含v2.8.1全部功能(歌词设置7项+秒表SystemClock+指南针ROTATION_VECTOR+通知跳转AppRouter)+v2.8.2闪退修复"
 }
