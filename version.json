@@ -1,6 +1,6 @@
 {
-  "version": "2.8.5",
-  "versionCode": 46,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.5/LiquidGlass-v2.8.5.apk",
-  "releaseNotes": "v2.8.5 - 指南针核心Bug修复(hasReceivedSensorData被加速度计误设true导致超时检测永不触发,指南针永远卡在'正在等待传感器数据')+通知推送修复(首条立即推送0延迟+频道升级IMPORTANCE_HIGH弹横幅)+通知点击黑屏根治(AppRouter volatile备份+首次组合兜底消费)+LyricsSettings崩溃修复+倒计时漂移修复(SystemClock真实时间戳)+秒表O(n²)性能修复+媒体通知FLAG_ACTIVITY_NEW_TASK+手电筒修复"
+  "version": "2.8.6",
+  "versionCode": 47,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.8.6/LiquidGlass-v2.8.6.apk",
+  "releaseNotes": "v2.8.6 - 指南针终极修复(TYPE_ROTATION_VECTOR存在但不报告数据时磁力计没注册导致无fallback,改为始终注册磁力计+accel+mag兜底)+通知美化(自定义RemoteViews渐变背景+色条+标签徽章+时间+点击查看)+通知可靠性(立即推送+HIGH优先级弹横幅)"
 }
