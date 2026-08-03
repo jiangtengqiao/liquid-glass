@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">灵工坊</string>
+    <string name="home">主页</string>
+    <string name="clock">时钟</string>
+    <string name="calculator">计算器</string>
+    <string name="visualizer">音乐可视化</string>
+    <string name="todo">待办清单</string>
+</resources>

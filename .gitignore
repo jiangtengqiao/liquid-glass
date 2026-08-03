@@ -1,48 +1,31 @@
-# ===== Android =====
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-android/.idea/
-android/captures/
-android/.kotlin/
+# 编译缓存
+**/build/
+**/.gradle/
+**/out/
+**/.idea/
+**/*.iml
+
+# Android APK（仅保留当前版本）
 *.apk
-*.aab
+!LiquidGlassApp/LiquidGlass-v2.9.2.apk
+local.properties
 
-# ===== HarmonyOS =====
-harmony/.hvigor/
-harmony/.idea/
-harmony/build/
-harmony/entry/build/
-harmony/oh_modules/
-harmony/entry/oh_modules/
-harmony/local.properties
-harmony/.preview/
-harmony/AppScope/.preview/
-harmony/**/.preview/
-*.hap
+# Desktop 编译产物
+LiquidGlassDesktop/build/
 
-# ===== Windows =====
-windows/src/GlassSuite/bin/
-windows/src/GlassSuite/obj/
-windows/publish/
-*.user
-*.suo
-.vs/
+# iOS 编译产物
+LiquidGlassiOS/build/
+LiquidGlassiOS/DerivedData/
+LiquidGlassiOS/.build/
 
-# ===== Server =====
-server/NeteaseCloudMusicApi/
-node_modules/
-npm-debug.log*
+# 敏感文件（切勿提交）
+SECRETS.env
 
-# ===== 通用 =====
-.kunsdd/
-*.log
+# 临时/分片文件
+*_part_*
+*.zip
+index.html
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Kun 内部文件
-.agents/
-server/beta-server/data/
-server/beta-server/node_modules/
-release/

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 后台音频播放：允许 App 在后台/锁屏时继续播放音乐 -->
+	<key>com.apple.developer.audio-input-call</key>
+	<true/>
+
+	<!-- App Groups：用于与小组件 / Watch App 共享 UserDefaults 与文件 -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.liquidglass.app</string>
+	</array>
+
+	<!-- 后台 URLSession 下载（对应 ResourceManager backgroundSessionConfiguration） -->
+	<key>com.apple.developer.url-session-download</key>
+	<true/>
+
+	<!-- iCloud（可选，未来用于跨设备同步播放历史/主题） -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.liquidglass.app</string>
+	</array>
+
+	<!-- iCloud 服务 -->
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudDocuments</string>
+		<string>CloudKit</string>
+	</array>
+
+	<!-- Keychain 共享访问组（用于安全存储登录凭证/NetEase Cookie） -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.liquidglass.app</string>
+	</array>
+
+	<!-- 后台模式声明（与 Info.plist 的 UIBackgroundModes 一致） -->
+	<key>com.apple.developer.healthkit</key>
+	<false/>
+
+	<!-- 关联域名（未来支持 Universal Links，如网易云登录回调） -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:liquidglass.app</string>
+	</array>
+
+	<!-- 网络扩展（可选，未来支持 VPN/本地代理） -->
+	<key>com.apple.developer.networking.networkextension</key>
+	<array/>
+</dict>
+</plist>

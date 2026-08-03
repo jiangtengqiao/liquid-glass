@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 外层光晕 -->
+    <path
+        android:pathData="M54,20 L82,36 L82,72 L54,88 L26,72 L26,36 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="40"
+                android:startColor="#2000D4FF"
+                android:endColor="#0000D4FF" />
+        </aapt:attr>
+    </path>
+
+    <!-- 六边形主体（工坊/工具象征） -->
+    <path
+        android:pathData="M54,24 L78,37.5 L78,64.5 L54,78 L30,64.5 L30,37.5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="30"
+                android:startY="24"
+                android:endX="78"
+                android:endY="78"
+                android:startColor="#8000D4FF"
+                android:endColor="#807B5CFC" />
+        </aapt:attr>
+    </path>
+
+    <!-- 六边形内层 -->
+    <path
+        android:pathData="M54,30 L72,40.5 L72,61.5 L54,72 L36,61.5 L36,40.5 Z"
+        android:fillColor="#33000000" />
+
+    <!-- 内部"工"字横线（上） -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M42,42 L66,42 L66,46 L42,46 Z" />
+
+    <!-- 内部"工"字竖线 -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M52,42 L56,42 L56,66 L52,66 Z" />
+
+    <!-- 内部"工"字横线（下） -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M42,62 L66,62 L66,66 L42,66 Z" />
+
+    <!-- 左上高光反射 -->
+    <path
+        android:fillColor="#60FFFFFF"
+        android:pathData="M54,24 L78,37.5 L72,40.5 L54,30 L36,40.5 L30,37.5 Z" />
+
+    <!-- 顶部高光条 -->
+    <path
+        android:fillColor="#40FFFFFF"
+        android:pathData="M40,39 L68,39 L66,41 L42,41 Z" />
+
+    <!-- 六边形描边发光 -->
+    <path
+        android:strokeColor="#5000D4FF"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,24 L78,37.5 L78,64.5 L54,78 L30,64.5 L30,37.5 Z" />
+
+    <!-- 底部环境光 -->
+    <path
+        android:fillColor="#207B5CFC"
+        android:pathData="M54,72 L72,61.5 L78,64.5 L54,78 L30,64.5 L36,61.5 Z" />
+</vector>

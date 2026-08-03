@@ -1,0 +1,26 @@
+{
+  "announcements": [
+    {
+      "id": "2026-08-03-v292",
+      "priority": "high",
+      "title": "v2.9.2 大道至简版正式发布",
+      "content": "主题精简为黑/白/系统自动三套，新增 Beta 先锋体验码系统、日志上传、公告栏，全平台（Android/iOS/Windows Desktop）同步推进。",
+      "actionLabel": "查看详情",
+      "actionTarget": "about",
+      "startTime": "2026-08-03T00:00:00Z",
+      "endTime": "2026-09-30T00:00:00Z",
+      "dismissible": true
+    },
+    {
+      "id": "2026-08-03-beta-open",
+      "priority": "medium",
+      "title": "Beta 先锋体验计划开启",
+      "content": "填写问卷并通过账户检测，即可获得专属先锋体验码，抢先体验内测版本与新功能。",
+      "actionLabel": "立即申请",
+      "actionTarget": "beta",
+      "startTime": "2026-08-03T00:00:00Z",
+      "endTime": "2026-12-31T00:00:00Z",
+      "dismissible": true
+    }
+  ]
+}

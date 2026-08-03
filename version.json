@@ -1,0 +1,7 @@
+{
+  "version": "2.9.2",
+  "versionCode": 51,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2/LiquidGlass-v2.9.2.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2/LiquidGlass-2.9.2.exe",
+  "releaseNotes": "v2.9.2 大道至简版 - 主题精简为深色(纯黑)/浅色(纯白)/系统自动跟随三套+Beta先锋体验码系统(8道问卷+账户达标检测+55分阈值卡50%通过率+17-25位不规则码+校验位+验证激活+拉取beta内测版本)+用户日志上传系统(CrashHandler崩溃捕获+按天日志+环形缓冲+设备信息+OkHttp上传)+顶部公告栏(远程JSON+本地缓存+优先级三色+可关闭)+emoji全清除(Material图标替换)+Windows Desktop端(Compose Multiplatform可打包exe)+全平台代码上传GitHub"
+}
