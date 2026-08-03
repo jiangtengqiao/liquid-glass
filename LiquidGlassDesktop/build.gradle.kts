@@ -31,7 +31,7 @@ compose.desktop {
             )
             packageName = "LiquidGlass"
             packageVersion = "2.9.2"
-            description = "灵工坊 - 液态玻璃智能工具箱"
+            description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
             // 安装包向导：让 jpackage 生成自带快捷方式与启动菜单的 EXE/MSI
             // 注：jpackage 自带的安装界面相对简陋，
