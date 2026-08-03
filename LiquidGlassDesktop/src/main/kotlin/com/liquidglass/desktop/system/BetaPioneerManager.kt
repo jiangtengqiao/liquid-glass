@@ -144,7 +144,7 @@ class BetaPioneerManager {
         val charset = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
         if (body.any { it !in charset } ) return false
         val expected = body.fold(0) { acc, c -> (acc * 31 + c.code) and 0xFFFF }
-            .toString(16).toUpperCase().padStart(4, '0').take(4)
+            .toString(16).uppercase().padStart(4, '0').take(4)
         return expected == parts[2]
     }
 

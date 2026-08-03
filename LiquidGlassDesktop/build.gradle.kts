@@ -25,8 +25,8 @@ compose.desktop {
     application {
         mainClass = "com.liquidglass.desktop.MainKt"
         nativeDistributions {
+            // Windows 端仅产出 EXE（AppImage 为 Linux 格式，在 Windows runner 上会导致 jpackage 失败）
             targetFormats(
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.AppImage,
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
