@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 应用显示名称（Springboard 图标下方） -->
+	<key>CFBundleDisplayName</key>
+	<string>液态玻璃</string>
+
+	<!-- Bundle 名称（项目内可执行文件名） -->
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+
+	<!-- Bundle Identifier（与 entitlements 中匹配） -->
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
+	<!-- 版本号（对外发布版本，对应 Android versionName） -->
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+
+	<!-- 内部构建号（对应 Android versionCode） -->
+	<key>CFBundleVersion</key>
+	<string>1</string>
+
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- 状态栏样式：隐藏由 App 内 preferredColorScheme 控制 -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+
+	<!-- 后台模式：音频（允许后台/锁屏继续播放音乐，对应 AVAudioSession .playback） -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
+	<!-- 后台 URLSession 下载完成时唤醒 App 的标识（对应 ResourceManager 的 backgroundSessionConfiguration） -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.liquidglass.ios.download</string>
+	</array>
+
+	<!-- 麦克风权限描述（音乐/录音相关，NSMicrophoneUsageDescription 必填） -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>液态玻璃需要使用麦克风以支持音频录制与语音识别功能</string>
+
+	<!-- 相机权限描述（手电筒/二维码扫描/取色器需要相机） -->
+	<key>NSCameraUsageDescription</key>
+	<string>液态玻璃需要使用相机以提供手电筒、二维码扫描与取色功能</string>
+
+	<!-- 相册读取权限（壁纸库读取/保存） -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>液态玻璃需要访问相册以保存壁纸与读取本地图片</string>
+
+	<!-- 相册添加权限（仅写入，无需完整访问） -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>液态玻璃需要将壁纸保存到相册</string>
+
+	<!-- 定位权限描述（指南针 GPS 信息，可选） -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>液态玻璃需要定位以在指南针中显示经纬度信息</string>
+
+	<!-- 运动与健身权限（指南针 CMMotionManager，iOS 上可选但建议声明） -->
+	<key>NSMotionUsageDescription</key>
+	<string>液态玻璃需要访问运动传感器以提供指南针与水平仪功能</string>
+
+	<!-- 本地网络权限（NetEase API、本地音乐扫描） -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>液态玻璃需要本地网络权限以扫描本地音乐与设备发现</string>
+
+	<!-- 支持的方向：竖屏为主，部分功能（壁纸预览）可横屏 -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+
+	<!-- iPad 支持方向 -->
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- 启动屏幕配置（Storyboard，需在 Xcode 中创建 LaunchScreen.storyboard） -->
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+
+	<!-- App Transport Security：允许 HTTP（NetEase 部分接口为 HTTP，对应 Android usesCleartextTraffic） -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+
+	<!-- 文件共享（通过 iTunes 访问 Documents，便于文件管理功能） -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+
+	<!-- 支持在文件 App 中打开（Documents 目录） -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+
+	<!-- 最低支持系统版本：iOS 16（SwiftUI AnimatedContent / Canvas 等需 iOS 16） -->
+	<key>MinimumOSVersion</key>
+	<string>16.0</string>
+</dict>
+</plist>

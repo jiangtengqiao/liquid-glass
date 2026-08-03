@@ -1,0 +1,564 @@
+# 液态玻璃 · 灵动工具箱
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-2.5.0-00D4FF?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/API-26%2B-7B5CFC?style=for-the-badge" alt="API">
+  <img src="https://img.shields.io/badge/APK-16MB-00E5A0?style=for-the-badge" alt="APK Size">
+  <img src="https://img.shields.io/badge/资源包-530MB-FF3B8B?style=for-the-badge" alt="Resource Pack">
+  <img src="https://img.shields.io/badge/工具模块-18个-3366FF?style=for-the-badge" alt="Tools">
+  <img src="https://img.shields.io/badge/license-MIT-FF6B35?style=for-the-badge" alt="License">
+</p>
+
+<p align="center">
+  <b>一款拥有极致液态玻璃美学效果的 Android 多功能工具箱应用</b>
+</p>
+
+<p align="center">
+  <a href="https://jiangtengqiao.github.io/liquid-glass/">下载页面</a> ·
+  <a href="https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.5.0/LiquidGlass-v2.5.0.apk">直接下载 APK</a> ·
+  <a href="#-更新日志">更新日志</a> ·
+  <a href="#-技术架构">技术架构</a>
+</p>
+
+---
+
+## 概述
+
+**液态玻璃 · 灵动工具箱** 是一款基于 Android 原生开发（Kotlin + Jetpack Compose）构建的多功能工具集合应用。其核心设计理念源自 iOS 平台广受赞誉的毛玻璃（Frosted Glass）与液态玻璃（Liquid Glass）视觉语言，通过多层半透明叠加、动态光晕折射、高光反射和流体粒子动画，在 Android 平台上实现了与 iOS 同等甚至超越的通透玻璃质感。
+
+本应用采用 **轻量 APK + 在线资源加载** 的架构设计：APK 本体仅 11MB，安装后首次启动会自动连接 GitHub Release 服务器下载 530MB 资源包（包含高清壁纸、白噪音音频、程序化艺术资源等），实现"小而美"的安装体验与"大而全"的功能体验的完美平衡。
+
+---
+
+## 特性亮点
+
+### 视觉设计
+
+- **8 层液态玻璃渲染管线**：从基底毛玻璃 → 发光边框 → 顶部强反射高光 → 斜向高光 → 弧形高光条 → 底部环境光 → 浮动光斑 → 彩虹色散折射，每一层都经过精心调校，确保在任何亮度背景下都能呈现通透的玻璃质感
+- **动态流体背景**：6 个随机游走色块 + 4 个浮动光晕 + 4 组正弦波纹 + 25 个彩色粒子，构成持续流动的液态背景动画
+- **水滴涟漪交互**：点击任意工具卡片时，从点击位置扩散出多层同心圆涟漪动画，模拟水滴落入液态表面的物理效果
+- **5 种流体渐变色系**：青色（Cyan）、紫色（Purple）、粉色（Pink）、蓝色（Blue）、青色（Teal），贯穿整个应用的所有 UI 组件
+- **极简深色基底**：`#08080F` 的极暗背景色，为玻璃效果提供最佳对比度画布
+
+### 核心工具模块（18 个）
+
+| 模块 | 功能描述 | 技术亮点 |
+|------|----------|----------|
+| **时钟·天气** | 实时时钟 + 全球天气 + 城市搜索 + 世界时钟 | IP 定位秒开 + GPS 后台静默更新；Open-Meteo API；10 个国际城市实时时钟 |
+| **科学计算器** | 基础四则 + 科学计算 + 记忆功能 + 历史记录 | 三角函数/对数/指数/阶乘/幂运算；MC/MR/M+/M-/MS 五键记忆；RAD/DEG 切换；2nd 功能层 |
+| **音乐播放器** | 网易云音乐 + 本地音乐 + 多平台跳转 | 扫码登录网易云；Media3 后台播放+通知栏+锁屏控件；播放队列管理；逐字歌词与模糊渐变动效；搜索历史+热搜 |
+| **待办清单** | 任务管理 | 液态玻璃卡片式管理；滑动交互；本地持久化(TodoStore) |
+| **倒计时秒表** | 计时与计次 | 毫秒级精度 |
+| **日历日程** | 事件管理 + 提醒 | 月度视图；AlarmManager 精确闹钟；5种预设+自定义提醒；通知弹窗 |
+| **记事本** | 轻量笔记 | 快速记录 |
+| **单位换算** | 10 类单位转换 + 实时汇率 | 长度/面积/体积/质量/温度/速度/时间/数据/压力/角度；货币汇率实时API拉取(open.er-api.com)+缓存兜底 |
+| **密码生成器** | 随机工具集合 | 可配置复杂度 |
+| **二维码** | 生成与识别 | ZXing 库生成；支持二维码/Code128条形码；URL/中文/特殊字符全支持 |
+| **健康计算** | BMI·体脂·卡路里 | 多维度健康指标 |
+| **白噪音** | 助眠·专注·放松 | 多种音频资源 |
+| **壁纸画廊** | 程序化艺术壁纸 | 高清资源；Compose Canvas 重渲染预览，所见即所得 |
+| **涂鸦画板** | 自由绘画 | 多点触控 |
+| **颜色选择器** | 色轮/调色板/收藏/色带取色 | 精确HEX值；多模式取色 |
+| **文件管理** | 浏览与管理 | 本地文件系统 |
+| **指南针水平仪** | 方向与水平 | 传感器数据 |
+| **手电筒** | 闪光灯工具 | 相机闪光灯控制 |
+
+> 另设「法律与公告中心」：关于页内提供入口，收录隐私政策、用户服务协议、免责声明、第三方服务与开源组件说明、儿童信息保护与社区行为公告 共 5 篇长文协议，支持字号调节与阅读进度。
+
+---
+
+## 技术架构
+
+### 技术栈
+
+```
+语言:        Kotlin 2.0.21
+UI框架:      Jetpack Compose (BOM 2024.12.01)
+构建工具:    Gradle 8.7.3 + AGP 8.7.3
+最低SDK:     Android 8.0 (API 26)
+目标SDK:     Android 14 (API 34)
+编译SDK:     Android 15 (API 35)
+架构模式:    单 Activity + Compose Navigation (状态驱动)
+签名:        V1 + V2 完整签名
+```
+
+### 项目结构
+
+```
+LiquidGlassApp/
+├── app/
+│   ├── build.gradle.kts              # 应用级构建配置
+│   ├── release.keystore              # 发布签名密钥
+│   └── src/main/
+│       ├── AndroidManifest.xml       # 应用清单（权限、组件声明）
+│       ├── java/com/liquidglass/app/
+│       │   ├── MainActivity.kt       # 入口 Activity
+│       │   ├── ResourceManager.kt    # 在线资源下载管理器
+│       │   └── ui/
+│       │       ├── HomeScreen.kt     # 主屏幕（工具网格）
+│       │       ├── LoadingScreen.kt  # 启动加载页（资源下载进度）
+│       │       ├── GlassSurface.kt   # 液态玻璃效果核心引擎
+│       │       ├── AboutScreen.kt    # 关于页面（更新检查）
+│       │       ├── ClockScreen.kt    # 时钟·天气模块
+│       │       ├── CalculatorScreen.kt  # 科学计算器模块
+│       │       ├── VisualizerScreen.kt  # (已移除：声波可视化)
+│       │       ├── TodoScreen.kt     # 待办清单模块
+│       │       ├── CountdownTimerScreen.kt  # 倒计时秒表模块
+│       │       ├── NoteScreen.kt     # 记事本模块
+│       │       ├── UnitConverterScreen.kt   # 单位换算模块
+│       │       ├── PasswordGeneratorScreen.kt # 密码生成器模块
+│       │       ├── BMICalculatorScreen.kt    # BMI计算器模块
+│       │       ├── GalleryScreen.kt  # 图片画廊模块
+│       │       ├── AudioPlayerScreen.kt      # 音频播放器模块
+│       │       ├── FileManagerScreen.kt      # 文件管理器模块
+│       │       ├── QRCodeScreen.kt   # 二维码生成器模块
+│       │       ├── DrawingScreen.kt  # 涂鸦画板模块
+│       │       ├── CompassScreen.kt  # 指南针模块
+│       │       ├── FlashlightScreen.kt       # 手电筒模块
+│       │       ├── ColorPickerScreen.kt      # 颜色选择器模块
+│       │       ├── CalendarScreen.kt # 日历模块（含事件提醒）
+│       │       ├── MusicScreen.kt    # 音乐播放器模块（网易云+本地+多平台）
+│       │       ├── LegalCenterScreen.kt      # 法律与公告中心（协议列表）
+│       │       ├── LegalDocViewerScreen.kt   # 协议阅读页（字号/进度/章节高亮）
+│       │       ├── LegalDocuments.kt # 5篇协议正文数据
+│       │       ├── ReminderScheduler.kt      # 日历提醒闹钟调度
+│       │       ├── ReminderReceiver.kt       # 日历提醒通知接收器
+│       │       ├── TodoStore.kt      # 待办清单本地持久化
+│       │       ├── CurrencyRateStore.kt      # 实时汇率缓存与兜底
+│       │       └── theme/
+│       │           ├── Color.kt      # 色彩系统定义
+│       │           └── Theme.kt      # Material3 主题配置
+│       └── res/
+│           ├── drawable/
+│           │   ├── ic_launcher_foreground.xml  # 液态玻璃水滴图标
+│           │   └── ic_launcher_background.xml  # 图标背景
+│           ├── mipmap-*/                        # 自适应图标
+│           ├── values/
+│           │   ├── strings.xml                 # 字符串资源
+│           │   └── themes.xml                  # 原生主题
+│           └── xml/
+│               └── file_paths.xml              # FileProvider 路径配置
+├── build.gradle.kts                   # 项目级构建配置
+├── settings.gradle.kts
+└── gradle.properties
+```
+
+---
+
+## 液态玻璃效果设计体系
+
+### 色彩系统
+
+| 色值 | 变量名 | 用途 |
+|------|--------|------|
+| `#08080F` | `BgDark` | 极暗背景色 |
+| `#0D0D1A` | `BgDark2` | 次级深色背景 |
+| `#00D4FF` | `FluidCyan` | 流体青色（主强调色） |
+| `#7B5CFC` | `FluidPurple` | 流体紫色 |
+| `#FF3B8B` | `FluidPink` | 流体粉色 |
+| `#3366FF` | `FluidBlue` | 流体蓝色 |
+| `#00E5A0` | `FluidTeal` | 流体青色 |
+| `#FF6B35` | `FluidOrange` | 流体橙色 |
+| `#F0F0F5` | `TextPrimary` | 主要文字色 |
+| `#99FFFFFF` | `TextSecondary` | 次要文字色 |
+| `#55FFFFFF` | `TextTertiary` | 三级文字色 |
+
+### 玻璃透明度层级
+
+| 层级 | Alpha值 | 用途 |
+|------|---------|------|
+| `GlassClear` | 0.06 (6%) | 基底 |
+| `GlassLight` | 0.09 (9%) | 轻量化玻璃 |
+| `GlassMedium` | 0.13 (13%) | 中等玻璃 |
+| `GlassBorder` | 0.16 (16%) | 边框 |
+| `GlassHighlight` | 0.21 (21%) | 高光 |
+| `GlassBright` | 0.31 (31%) | 亮色玻璃 |
+
+### 玻璃渲染管线（8 层叠加）
+
+1. **基底毛玻璃层** — `Color.White.copy(alpha = glassAlpha * 0.6f)` 填充圆角矩形
+2. **多层发光边框** — 三层嵌套描边，alpha 逐层递减（0.30 / 0.20 / 0.10）
+3. **顶部强反射高光** — 由左上到右上的渐变路径，模拟光源照射毛玻璃表面的反射
+4. **左上角斜向高光** — 从 (0,0) 到 (38%,38%) 的三角形渐变区域
+5. **顶部弧形高光条** — 沿顶部边缘的贝塞尔曲线光带，模拟曲面玻璃的弧面反射
+6. **底部边缘环境光** — 从底部向上渐变的微弱光晕
+7. **浮动光斑** — 右上角和左下角的固定圆形光斑
+8. **彩虹色散折射** — 三层不同颜色的描边（Cyan → Purple → Pink），模拟棱镜色散
+
+---
+
+## 资源加载机制
+
+应用采用"先安装、后加载"的策略：
+
+### 启动流程
+
+```
+用户安装 APK (11MB)
+    ↓
+首次启动 → LoadingScreen
+    ↓
+检查本地资源 (.installed 标记文件)
+    ↓
+┌── 已安装 → 跳过下载 → 进入主界面
+└── 未安装 → 连接 GitHub Release
+              ↓
+         下载 resources.zip (530MB)
+              ↓
+         显示进度条 + 下载速度
+              ↓
+         解压到 filesDir/resources/
+              ↓
+         写入 .installed 标记
+              ↓
+         进入主界面
+```
+
+### 资源包内容
+
+- **raw/**: 10 个白噪音音频文件（WAV 格式）
+- **assets/**: 25 个程序化资源数据文件（每个 20MB）
+- **assets/**: 多张高清壁纸图片（PNG 格式）
+
+### 容错机制
+
+- 3 次自动重试，每次间隔 2 秒
+- 支持"跳过"按钮直接进入应用（部分功能不可用）
+- 下载失败时显示详细错误信息 + 重试按钮
+- 断点续传支持（通过 HTTP Range 请求）
+
+---
+
+## 更新机制
+
+应用内置自动更新检查功能：
+
+1. **更新检测**：从 GitHub Raw 获取 `version.json`，比对 `versionCode`
+2. **多 URL 尝试**：优先使用 GitHub Raw URL，失败时自动切换备用 URL
+3. **增量下载**：检测到新版本后，从 GitHub Release 下载最新 APK
+4. **静默安装**：下载完成后通过 FileProvider 触发系统安装器
+5. **版本文件**：[version.json](https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/version.json)
+
+---
+
+## 构建与部署
+
+### 环境要求
+
+- JDK 17+
+- Android SDK 35
+- Gradle 8.7.3
+- Kotlin 2.0.21
+
+### 构建命令
+
+```bash
+# 克隆仓库
+git clone https://github.com/jiangtengqiao/liquid-glass.git
+cd LiquidGlassApp
+
+# 构建 Release APK
+export JAVA_HOME=/path/to/jdk-17
+export ANDROID_HOME=/path/to/android-sdk
+./gradlew assembleRelease
+
+# APK 输出路径
+# app/build/outputs/apk/release/LiquidGlass-v2.5.0.apk
+```
+
+### 发布流程 (v2.5.0+)
+
+1. 构建 APK → `./gradlew assembleRelease`
+2. 重命名 APK → `LiquidGlass-v2.5.0.apk`
+3. 创建 GitHub Release → `gh release create v2.5.0 ./LiquidGlass-v2.5.0.apk --title "v2.5.0"`
+4. 更新 `version.json`（修改 `versionCode`、`version`、`downloadUrl`）→ `git push`
+5. 4层资源包上传：`resources.zip`(v2.3.4)、`interaction-pack.zip`(v2.3.4)、`patch-core.zip`(v2.3.4)、`init-premium.zip`(v2.3.4) 已存在则无需重传
+6. 用户打开应用 → 关于页 → 检查更新 → 自动检测到 v2.5.0
+
+---
+
+## 开发计划
+
+### 已完成
+
+- [x] v1.0.0 — 液态玻璃UI + 核心4工具
+- [x] v1.1.0 — 天气秒开 + 城市搜索 + 世界时钟
+- [x] v2.0.0 — 14个新工具模块
+- [x] v2.1.0 — 在线资源加载 + 品牌升级
+
+### 规划中
+
+- [ ] 更多传感器工具（气压计、测距仪、分贝仪）
+- [ ] AI 智能助手集成
+- [ ] 桌面小组件（Widget）
+- [ ] 深色/浅色模式切换
+- [ ] 多语言国际化支持
+- [ ] 云端数据同步
+- [ ] 插件化架构
+
+---
+
+## 许可证
+
+本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
+
+---
+
+## 联系方式
+
+- **创作者**: JTQ Allen
+- **电话/微信**: 18978332931
+- **QQ邮箱**: 3982206481@qq.com
+- **备用邮箱**: jiangtengqiao@qq.com
+- **Outlook**: jiangtengqiao@outlook.com
+- **GitHub**: [@jiangtengqiao](https://github.com/jiangtengqiao)
+
+---
+
+## 更新日志
+
+<details open>
+<summary><b>v2.5.0</b> (2026-07-30) — 4层资源层级系统 + 网易云验证码登录 + 功能门禁</summary>
+
+### 4层强制层级资源包系统
+- 全新4层强制层级架构：基础资源包 → 交互外观包 → 核心功能补丁包(patch-core) → 高级体验初始化包(init-premium)
+- 未下载对应补丁包则对应功能不可用，首页显示锁标记+下载提示
+- 核心功能门禁：计算器/单位换算/二维码/颜色选择器/密码生成器 需patch-core包
+- 高级体验门禁：音乐/日历/待办/笔记/健康计算/倒计时/指南针 需init-premium包
+- 关于页4层补丁包独立卡片UI，每张显示功能解锁范围与下载进度
+
+### 网易云手机验证码登录
+- 新增手机验证码登录方式：对接 /weapi/sms/captcha/sent 发短信 + /weapi/login/cellphone 验证码登录
+- 登录页Tab切换：扫码登录 / 手机验证码登录
+- 自动预填上次绑定手机号，平台账号绑定手机校验
+
+### 网易云数据拉取修复
+- 修复Cookie管理：合并客户端标识+持久化登录态，按name去重，确保MUSIC_U/__csrf正确发送
+- 添加X-Real-IP: 122.228.19.64 解决地域版权校验导致内容接口返回空
+- 自动注入csrf_token，payload与Cookie一致，避免301 NOT LOGIN
+- fetchAccount兜底保留已有userId，避免uid=0导致歌单为空
+
+### 版本信息
+- versionCode: 24 / versionName: 2.5.0
+
+</details>
+
+<details open>
+<summary><b>v2.4.4</b> (2026-07-30) — 4层资源包系统上线</summary>
+
+### 版本信息
+- versionCode: 23 / versionName: 2.4.4
+
+</details>
+
+<details open>
+<summary><b>v2.4.3</b> (2026-07-30) — 网易云扫码修复+下载优化+交互包充实+协议扩充</summary>
+
+### 网易云扫码授权完就过期死循环 — 根因修复
+- **根因1**：`weapiPost` 手动设 Cookie header 与 OkHttp `cookieJar` 冲突（OkHttp BridgeInterceptor 会覆盖手动 Cookie）
+- **根因2**：`fetchAccount` 失败时不检查 MUSIC_U cookie 是否已落库 → 登录态丢失
+- **根因3**：`pollQrStatus` 网络失败直接 ERROR，UI 显示"重新生成"（用户误以为"过期"）
+- **修复**：移除手动 Cookie header（cookieJar 全自动管理）；fetchAccount 失败时 MUSIC_U 兜底；ERROR 重试 2 次
+
+### 资源包下载速度优化
+- buffer 8KB → 256KB（减少系统调用）
+- 分块下载 4 路并发（充分利用带宽，解决几十KB/s问题）
+
+### 交互外观包内容充实
+- 从 92KB 空包 → 13KB/35 文件（15主题+6粒子+4玻璃+4音效+5流体预设）
+
+### 法律协议扩充
+- 5 篇协议各 +4000 字（数据安全/跨境传输/Cookie详情/账号安全/仲裁/不可抗力/SDK收集/家长监护等）
+
+### 版本信息
+- versionCode: 17 / versionName: 2.4.3
+
+</details>
+
+<details open>
+<summary><b>v2.4.2</b> (2026-07-30) — 检查更新查找不到新版修复</summary>
+
+### 检查更新查找不到新版 — 根因修复
+- **根因**：jsdelivr CDN 对 GitHub 仓库的缓存最长可达 12 小时以上，且 `?t=` 时间戳参数对 jsdelivr 的 `gh` 仓库缓存**完全无效**。检查更新代码把 jsdelivr 放在第一位优先用，结果拿到的 version.json 是 2.2.0 的旧缓存（versionCode=5），远小于用户当前版本（versionCode=15）→ `5 > 15` 为 false → 走「已是最新版」分支 → **查找不到新版**
+- **实测**：三个源同时验证，jsdelivr cdn 返回 2.2.0，jsdelivr fastly 返回 2.2.1，GitHub raw 返回正确的 2.4.1
+- **修复**：
+  - 源顺序调整：GitHub raw 优先（实时不缓存，永远是最新的），jsdelivr 降为兜底
+  - 新增脏缓存检测：若源返回的 versionCode 远小于当前版本，判定为 CDN 旧缓存并自动切换源
+  - 请求头加 `Cache-Control: no-cache`
+  - 失败提示更明确：显示具体失败原因（如「源返回旧版本 v2.2.0 (vc=5)，疑似CDN缓存，切换源」）
+
+### 版本信息
+- versionCode: 16 / versionName: 2.4.2
+
+</details>
+
+<details open>
+<summary><b>v2.4.1</b> (2026-07-30) — 音乐播放器核心 Bug 修复</summary>
+
+### 网易云扫码二维码加载不出来 — 根因修复
+- **根因**：`NetEaseApiClient` 用 `lateinit var appContext`，在 `MusicScreen` 的 `LaunchedEffect(Unit)` 里异步 init，与 `QrLoginView` 的 `createQrKey()` 存在竞态。首请求触发时 `appContext` 未初始化 → `UninitializedPropertyAccessException` 被 catch 吞掉 → 返回 null → 二维码永远出不来
+- **修复**：`appContext` 改 nullable + `ensureContext()` 自愈兜底；新增 `ContextProvider` 全局上下文；`MainActivity.onCreate` 同步预初始化 `NetEaseApiClient`，彻底消除竞态
+
+### QrLoginView 重写
+- 生成 key 失败自动重试 3 次（间隔 1.5s）
+- 网络失败明确提示「生成失败，请检查网络」+ 重试按钮
+- 不再误显示「二维码已过期」
+
+### 退出登录后 UI 不刷新 — 修复
+- 登录态提升为 Compose state（`loggedIn`）+ `loginTick` 计数器
+- 顶部栏 VIP 徽章、网易云 Tab 登录/退出即时重组
+- 退出登录同步清空播放队列
+
+### 第三方音乐 App 检测是否安装错误 — 修复
+- **根因**：Android 11+ (API 30+) 默认包可见性限制，`getPackageInfo` 对未声明 `<queries>` 的第三方 App 一律返回 NameNotFoundException → 永远显示「未安装」
+- **修复**：AndroidManifest 新增 `<queries>` 声明（酷狗/汽水/QQ音乐/网易云 + https intent）
+- 跳转加固：双重检测（`getPackageInfo` + `getLaunchIntentForPackage`）+ launchIntent 失败回退网页 + try-catch 兜底
+
+### 版本信息
+- versionCode: 15 / versionName: 2.4.1
+
+</details>
+
+<details open>
+<summary><b>v2.4.0</b> (2026-07-30) — 音乐播放器 + 全功能复盘修缮 + 法律公告中心</summary>
+
+### 全新音乐播放器
+- **网易云音乐接入**：扫码登录、搜索、歌单、播放URL获取、逐字歌词(YRC)解析、会员状态识别
+- **本地音乐扫描**：基于 MediaStore 扫描设备本地音乐文件
+- **多平台跳转**：酷狗音乐 / 汽水音乐 / QQ 音乐一键跳转入口
+- **Media3 后台播放**：前台服务 + 通知栏控件 + 锁屏控件，Android 13+ 通知权限适配
+- **播放队列管理**：可视化队列、移动、删除、清空、跳播；循环模式与随机播放
+- **搜索体验**：搜索历史本地持久化 + 网易云热搜词榜单
+- **歌词动效**：逐字滚动 + 模糊渐变高亮，VIP/无版权错误提示
+
+### 全功能复盘修缮
+- **二维码/条形码重写**：引入 ZXing 库替代手写实现，修复 URL 特殊字符与中文乱码、Code128 码表越界崩溃
+- **单位换算修复**：货币汇率改为实时 API 拉取(open.er-api.com)，支持缓存与默认兜底，告别硬编码陈旧汇率
+- **壁纸画廊修复**：使用 Compose Canvas 重渲染预览，所见即所得，预览与实际设置完全一致
+- **待办清单修复**：新增 TodoStore 本地持久化，退出即丢问题彻底解决
+- **日历日程升级**：新增事件提醒功能(AlarmManager 精确闹钟 + 通知)，5种预设与自定义提醒时间
+- **颜色选择器**：「取色」Tab 改名为「色带取色」，文案与功能对齐
+- **移除声波可视化**：用户反馈花架子无用，已删除 VisualizerScreen
+
+### 法律与公告中心
+- 关于页新增「法律与公告中心」入口
+- 收录 5 篇长文协议：隐私政策 / 用户服务协议 / 免责声明 / 第三方服务与开源组件说明 / 儿童信息保护与社区行为公告
+- 阅读器支持：6 档字号调节、阅读进度条、返回顶部悬浮按钮、章节标题自动识别高亮
+
+### 版本信息
+- versionCode: 14
+- versionName: 2.4.0
+
+</details>
+
+<details open>
+<summary><b>v2.1.0</b> (2026-07-29) — 灵动工具箱</summary>
+
+### 重大更新
+- **全新品牌升级**：应用名称正式更名为"液态玻璃 · 灵动工具箱"，定位从单一工具升级为多功能工具箱平台
+- **在线资源加载架构**：重构应用架构，将 APK 体积从 765MB 大幅缩减至 11MB 轻量级安装包，530MB 资源包改为首次启动时联网下载
+- **启动加载页**：全新设计的液态玻璃风格启动加载页面，包含动态流体背景、水滴图标脉冲动画、环形进度条、下载速度实时显示、跳过/重试交互
+- **全新应用图标**：液态玻璃水滴形状的矢量图标，包含径向渐变光晕、线性渐变主体、左侧高光反射弧、底部反射光等多层效果
+
+### 功能优化
+- 资源下载支持 3 次自动重试，每次间隔 2 秒
+- 支持跳过资源包直接进入应用（部分功能不可用）
+- 下载进度实时显示（百分比 + 已下载/总大小 + 速度）
+- 资源解压进度可视化
+- 完善的错误处理与用户提示
+
+### 技术改进
+- 新增 `ResourceManager.kt` 单例资源管理器，支持下载、解压、安装、状态检测
+- 新增 `LoadingScreen.kt` 启动加载页面，6 种状态管理（检查中/加载中/下载中/解压中/完成/错误）
+- 资源下载支持 HTTP 重定向、自定义 User-Agent、超时配置
+- 资源解压使用 ZipInputStream 流式处理，支持大文件解压
+- 使用 `.installed` 标记文件判断资源是否已安装
+
+### 版本信息
+- versionCode: 4
+- APK 大小: 11MB
+- 资源包大小: 530MB
+
+</details>
+
+<details>
+<summary><b>v2.0.0</b> (2026-07-29) — 18个工具模块</summary>
+
+### 新增工具模块（14个）
+- **倒计时秒表**：高精度计时器，支持计次功能，液态玻璃风格按钮
+- **记事本**：轻量级笔记管理，支持快速记录与编辑
+- **单位换算**：10 类单位转换（长度、面积、体积、质量、温度、速度、时间、数据存储、压力、角度），实时换算
+- **密码生成器**：可配置密码复杂度，随机密码生成
+- **BMI 健康计算**：BMI 指数计算、体脂率估算、卡路里消耗计算
+- **壁纸画廊**：程序化艺术壁纸展示，支持浏览与设为壁纸
+- **白噪音播放器**：多首白噪音音频（雨声、海浪、森林等），助眠专注放松
+- **文件管理器**：本地文件系统浏览，支持文件操作
+- **二维码生成器**：即时生成二维码，支持自定义内容
+- **涂鸦画板**：自由绘画创作，多点触控支持
+- **指南针水平仪**：利用设备传感器，实时方向指示与水平检测
+- **手电筒**：控制相机闪光灯，支持常亮模式
+- **颜色选择器**：取色器 + 配色方案，支持 HEX 值精确输入
+- **日历日程**：月度日历视图，支持事件管理与提醒
+
+### 视觉增强
+- 液态玻璃效果全面增强：玻璃透明度从 0.10 提升到 0.18，边框更明显
+- 新增更多流体光晕层和粒子效果
+- 卡片交互反馈优化（按压缩放动画）
+
+### 架构改进
+- 首页工具网格从 2×2 扩展为 2×9 可滚动网格
+- 每个工具卡片使用独特的渐变色系
+- 屏幕切换动画优化（淡入淡出 + 滑动 + 缩放组合）
+
+</details>
+
+<details>
+<summary><b>v1.1.0</b> (2026-07-28) — 天气世界时钟</summary>
+
+### 天气模块优化
+- **IP 定位秒开**：使用 ip-api.com 进行 IP 地理定位，启动即可获取天气信息，无需等待 GPS
+- **GPS 后台静默更新**：授权定位权限后，GPS 在后台更新更精确的位置数据
+- **6 秒超时 fallback**：GPS 定位 6 秒内未返回结果，自动 fallback 到 IP 定位
+- **城市搜索**：支持输入任意城市名称搜索全球城市天气，使用 Open-Meteo Geocoding API
+- **世界时钟**：10 个国际城市实时时钟（北京、东京、纽约、伦敦、巴黎、悉尼、迪拜、洛杉矶、莫斯科、孟买），显示白天/夜间状态
+
+### 更新机制优化
+- 更新检查 URL 改为 GitHub Raw 稳定地址
+- 多 URL 尝试机制，确保更新检查可靠性
+- 支持从 GitHub Release 下载最新版本 APK
+
+### 视觉增强
+- 液态玻璃效果增强：更通透的毛玻璃质感，增加顶部弧形高光条
+- 天气卡片 UI 优化：逐小时预报横向滚动，7 日预报温度进度条
+- 世界时钟卡片：国旗 Emoji + 城市名 + 日期 + 实时时间
+
+</details>
+
+<details>
+<summary><b>v1.0.0</b> (2026-07-28) — 初始发布</summary>
+
+### 核心功能
+- **液态玻璃通透 UI 全面实现**：8 层渲染管线，动态流体背景，水滴涟漪交互
+- **时钟 + 实时天气**：当前时间显示，实时天气数据（温度、湿度、风速、气压、体感温度），7 日天气预报，逐小时预报
+- **科学计算器**：基础四则运算 + 科学计算（三角函数、对数、指数、开方、阶乘），历史记录，记忆功能（MC/MR/M+/M-/MS），RAD/DEG 角度切换
+- **音乐可视化**：3 种频谱模式（柱状图、环形图、波形图），64 频段模拟 + 平滑插值，多层波形叠加
+- **待办清单**：液态玻璃卡片式任务管理，滑动交互
+- **定位权限申请**：动态权限请求，支持 GPS 精确定位和网络粗略定位
+- **IP 地理定位备选**：当 GPS 不可用时，使用 IP 定位获取大致位置
+- **内嵌更新检查**：关于页面内置更新检测与下载功能
+- **创作者信息**：联系方式展示，一键拨号，存入通讯录
+
+### 技术基础
+- Material3 + Jetpack Compose 原生 UI
+- 深色主题色彩系统
+- 自定义 GlassSurface Modifier
+- FluidBackground 动态背景组件
+- DropletAnimator 水滴涟漪动画系统
+
+</details>
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ by JTQ Allen © 2026</sub>
+</p>

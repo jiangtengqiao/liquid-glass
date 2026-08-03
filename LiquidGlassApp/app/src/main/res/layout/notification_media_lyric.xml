@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自定义媒体通知：专辑封面做背景 + 渐变遮罩 + 多行歌词 + 可拖动进度条 + 播放控制 -->
+<!-- 注意：所有 drawable 必须 RemoteViews 兼容，不能用 centerColor 等 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#CC000000">
+
+    <!-- 专辑封面背景 -->
+    <ImageView
+        android:id="@+id/notif_cover_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+
+    <!-- 深色遮罩：用 ImageView 代替裸 View（RemoteViews 不支持 <View>） -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#B3000000"
+        android:contentDescription="@null" />
+
+    <!-- 内容区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <!-- 歌曲信息行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/notif_title"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:shadowColor="#AA000000"
+                android:shadowRadius="4"
+                android:text="歌曲标题" />
+
+            <TextView
+                android:id="@+id/notif_artist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCFFFFFF"
+                android:textSize="13sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:maxEms="8"
+                android:layout_marginStart="10dp"
+                android:shadowColor="#AA000000"
+                android:shadowRadius="4"
+                android:text="艺人" />
+        </LinearLayout>
+
+        <!-- 多行歌词区：纯文字+颜色+大小区分 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_marginVertical="8dp">
+
+            <TextView
+                android:id="@+id/notif_lyric_prev"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#99FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:shadowColor="#99000000"
+                android:shadowRadius="3"
+                android:text="上一行歌词" />
+
+            <TextView
+                android:id="@+id/notif_lyric_curr"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="6dp"
+                android:textColor="#00E5FF"
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:lineSpacingExtra="2dp"
+                android:shadowColor="#CC000000"
+                android:shadowRadius="6"
+                android:text="当前行歌词" />
+
+            <TextView
+                android:id="@+id/notif_lyric_next"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#99FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:shadowColor="#99000000"
+                android:shadowRadius="3"
+                android:text="下一行歌词" />
+        </LinearLayout>
+
+        <!-- 进度条（ProgressBar，RemoteViews 原生支持；SeekBar 不支持） -->
+        <ProgressBar
+            android:id="@+id/notif_seekbar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressDrawable="@drawable/notif_seekbar_progress"
+            android:minHeight="3dp"
+            android:maxHeight="3dp" />
+
+        <!-- 播放控制按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <ImageView
+                android:id="@+id/btn_prev"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:padding="10dp"
+                android:src="@drawable/ic_notif_prev"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="上一首" />
+
+            <ImageView
+                android:id="@+id/btn_play_pause"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginHorizontal="32dp"
+                android:padding="10dp"
+                android:src="@drawable/ic_notif_pause"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="播放暂停" />
+
+            <ImageView
+                android:id="@+id/btn_next"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:padding="10dp"
+                android:src="@drawable/ic_notif_next"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="下一首" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>
