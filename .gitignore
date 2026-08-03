@@ -29,3 +29,8 @@ index.html
 # OS
 .DS_Store
 Thumbs.db
+
+# 系统目录
+.agents/
+.kunsdd/
+.kotlin/
