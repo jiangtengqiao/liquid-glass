@@ -441,7 +441,7 @@ private fun MusicTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Tab 切换（玻璃态胶囊）
-            listOf("discover" to "🎵 发现", "netease" to "☁️ 网易云", "local" to "📁 本地").forEach { (id, label) ->
+            listOf("discover" to "发现", "netease" to "网易云", "local" to "本地").forEach { (id, label) ->
                 val selected = tab == id
                 Box(
                     modifier = Modifier
@@ -677,7 +677,7 @@ private fun DiscoverTab(
             // 热搜词
             if (hotWords.isNotEmpty()) {
                 item {
-                    SectionHeader(title = "🔥 热搜榜")
+                    SectionHeader(title = "热搜榜")
                     FlowChips(items = hotWords.take(15), onClick = onSearchHot)
                 }
             }
@@ -685,7 +685,7 @@ private fun DiscoverTab(
             // 推荐歌单（横向卡片网格）
             if (recommendPlaylists.isNotEmpty()) {
                 item {
-                    SectionHeader(title = "🎵 推荐歌单")
+                    SectionHeader(title = "推荐歌单")
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(vertical = 4.dp)
@@ -964,7 +964,7 @@ private fun NetEaseTab(
                 } else {
                     item {
                         SectionHeader(
-                            title = "🎵 ${selectedPlaylist!!.name}（${playlistTracks.size}）",
+                            title = "${selectedPlaylist!!.name}（${playlistTracks.size}）",
                             actionText = "播放全部",
                             onAction = { onPlaySong(playlistTracks.first(), playlistTracks) }
                         )
@@ -1104,7 +1104,7 @@ private fun LocalTab(
         if (localSongs.isNotEmpty()) {
             item {
                 SectionHeader(
-                    title = "🎵 本地音乐（${localSongs.size}）",
+                    title = "本地音乐（${localSongs.size}）",
                     actionText = "播放全部",
                     onAction = { onPlaySong(localSongs.first(), localSongs) }
                 )
@@ -1206,9 +1206,9 @@ private fun PlayerBar(
                 ) {
                     Text(
                         when (playMode) {
-                            PlayMode.SEQUENCE -> "↻"
-                            PlayMode.SINGLE -> "⟲"
-                            PlayMode.RANDOM -> "🔀"
+                            PlayMode.SEQUENCE -> "顺序"
+                            PlayMode.SINGLE -> "单曲"
+                            PlayMode.RANDOM -> "随机"
                         },
                         color = LiquidGlassTheme.onSurfaceMuted,
                         fontSize = 16.sp
@@ -1225,7 +1225,7 @@ private fun PlayerBar(
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("⏮", color = LiquidGlassTheme.onSurfaceColor, fontSize = 18.sp)
+                    Text("上一首", color = LiquidGlassTheme.onSurfaceColor, fontSize = 12.sp)
                 }
                 Spacer(Modifier.width(16.dp))
 
@@ -1241,9 +1241,9 @@ private fun PlayerBar(
                 ) {
                     Text(
                         when (player.state) {
-                            PlaybackController.State.PLAYING -> "⏸"
-                            PlaybackController.State.PAUSED -> "▶"
-                            else -> "▶"
+                            PlaybackController.State.PLAYING -> "暂停"
+                            PlaybackController.State.PAUSED -> "播放"
+                            else -> "播放"
                         },
                         color = LiquidGlassTheme.onAccent,
                         fontSize = 18.sp
@@ -1260,7 +1260,7 @@ private fun PlayerBar(
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("⏭", color = LiquidGlassTheme.onSurfaceColor, fontSize = 18.sp)
+                    Text("下一首", color = LiquidGlassTheme.onSurfaceColor, fontSize = 12.sp)
                 }
                 Spacer(Modifier.width(16.dp))
 
@@ -1340,7 +1340,7 @@ private fun PlayerBar(
         // ===== 右：音量 + 歌词 + 设置 =====
         Row(verticalAlignment = Alignment.CenterVertically) {
             // 音量
-            Text("🔊", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
+            Text("音量", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
             Spacer(Modifier.width(6.dp))
             Box(
                 modifier = Modifier
@@ -1519,7 +1519,7 @@ private fun QueuePanel(
                             contentAlignment = Alignment.Center
                         ) {
                             if (playing) {
-                                Text("▶", color = LiquidGlassTheme.accentSecondary, fontSize = 12.sp)
+                                Text("播放", color = LiquidGlassTheme.accentSecondary, fontSize = 10.sp)
                             } else {
                                 Text(
                                     "${idx + 1}",
@@ -2415,7 +2415,7 @@ private fun MvCard(mv: NetEaseApi.MvInfo) {
                     .background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("▶", color = LiquidGlassTheme.onSurfaceBright, fontSize = 18.sp)
+                Text("播放", color = LiquidGlassTheme.onSurfaceBright, fontSize = 14.sp)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -2575,7 +2575,7 @@ private fun CoverArt(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-        } ?: Text("🎵", color = LiquidGlassTheme.onSurfaceMuted, fontSize = (size.value / 2.5f).sp)
+        } ?: Text("♪", color = LiquidGlassTheme.onSurfaceMuted, fontSize = (size.value / 2.5f).sp)
     }
 }
 
@@ -2601,7 +2601,18 @@ private suspend fun resolvePlayableSource(song: Song, quality: String): Pair<Str
             if (song.streamUrl.isNotBlank()) {
                 song.streamUrl to false
             } else {
-                val url = NetEaseApi.songUrl(song.id, quality)
+                // v2.11.1：多音质降级重试，解决"非VIP歌也播不了"
+                // 网易云不同歌曲可用音质不同，逐级降级直到拿到URL
+                val fallbackChain = when (quality) {
+                    "lossless", "hires" -> listOf("lossless", "exhigh", "standard")
+                    "exhigh" -> listOf("exhigh", "standard")
+                    else -> listOf("standard", "exhigh")
+                }
+                var url = ""
+                for (q in fallbackChain) {
+                    url = NetEaseApi.songUrl(song.id, q)
+                    if (url.isNotBlank()) break
+                }
                 url to false
             }
         }

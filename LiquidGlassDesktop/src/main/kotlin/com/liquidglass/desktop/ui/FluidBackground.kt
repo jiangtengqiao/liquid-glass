@@ -41,14 +41,13 @@ private fun DrawScope.drawFluid(time: Float, mousePos: Offset) {
     val w = size.width
     val h = size.height
 
-    // ===== 第 0 层：明亮蓝紫底色（v2.11.0 大幅提亮）=====
-    // v2.10.x: #0A0A1A → v2.11.0: #2A2A55（亮度提升 3 倍）
+    // ===== 第 0 层：明亮蓝紫底色（v2.11.1 再次提亮）=====
     drawRect(
         brush = Brush.radialGradient(
             colors = listOf(
-                Color(0xFF353568),      // 中心更亮（紫蓝调）
-                Color(0xFF2A2A55),      // 中段
-                Color(0xFF1E1E42)       // 边缘（与 Theme.backgroundColor 一致）
+                Color(0xFF454580),      // 中心更亮
+                Color(0xFF353568),      // 中段
+                Color(0xFF2A2A5A)       // 边缘（与 Theme.backgroundColor 一致）
             ),
             center = Offset(w * 0.5f, h * 0.45f),
             radius = maxOf(w, h) * 0.85f

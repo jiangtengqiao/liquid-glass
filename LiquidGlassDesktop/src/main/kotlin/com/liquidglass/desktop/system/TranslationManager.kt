@@ -372,8 +372,35 @@ class TranslationManager {
         online
     }
 
-    /** MyMemory 免费 API（无需 key，适合短文本） */
+    /** MyMemory 免费 API（无需 key，适合短文本）
+     *  v2.11.1：长文本分段翻译（每段≤480字，按句号/换行切分），拼接结果
+     *  修复用户反馈"PRO会员最大字符500"——MyMemory API 单次限制500字符 */
     private fun tryOnlineMyMemory(
+        text: String,
+        from: TranslateLanguage,
+        to: TranslateLanguage
+    ): TranslationResult? {
+        // 短文本直接翻译
+        if (text.length <= 480) return tryMyMemoryOnce(text, from, to)
+        // 长文本：按句子分段翻译后拼接
+        val segments = splitForTranslation(text, maxLen = 480)
+        val parts = mutableListOf<String>()
+        var detected: String? = null
+        for (seg in segments) {
+            if (seg.isBlank()) { parts.add(seg); continue }
+            val r = tryMyMemoryOnce(seg, from, to) ?: return null
+            if (detected == null) detected = r.detected
+            parts.add(r.target)
+        }
+        return TranslationResult(
+            source = text, target = parts.joinToString(""),
+            from = from.code, to = to.code,
+            detected = detected, offline = false, alternatives = emptyList()
+        )
+    }
+
+    /** 单次 MyMemory 请求（≤500字符） */
+    private fun tryMyMemoryOnce(
         text: String,
         from: TranslateLanguage,
         to: TranslateLanguage
@@ -391,24 +418,49 @@ class TranslationManager {
                 val translated = json.optJSONObject("responseData")
                     ?.optString("translatedText")?.takeIf { it.isNotBlank() } ?: return null
                 val detected = json.optJSONObject("responseData")?.optString("detectedLanguage")
-                // 备选译文
-                val alts = mutableListOf<String>()
-                val matches = json.optJSONArray("matches")
-                if (matches != null) {
-                    for (i in 0 until matches.length()) {
-                        val m = matches.optJSONObject(i) ?: continue
-                        val t = m.optString("translation").takeIf { it.isNotBlank() } ?: continue
-                        if (t != translated && t.length < 200) alts.add(t)
-                        if (alts.size >= 3) break
-                    }
-                }
                 TranslationResult(
                     source = text, target = cleanText(translated),
                     from = from.code, to = to.code,
-                    detected = detected, offline = false, alternatives = alts
+                    detected = detected, offline = false, alternatives = emptyList()
                 )
             }
         } catch (_: Exception) { null }
+    }
+
+    /** 长文本分段：按句号/换行/逗号切分，每段不超过 maxLen */
+    private fun splitForTranslation(text: String, maxLen: Int): List<String> {
+        if (text.length <= maxLen) return listOf(text)
+        val result = mutableListOf<String>()
+        // 按换行优先切分
+        val lines = text.split("\n")
+        for (line in lines) {
+            if (line.length <= maxLen) {
+                result.add(line + "\n")
+            } else {
+                // 按句号/问号/感叹号切分
+                val sentences = line.split("(?<=[。！？.!?；;])".toRegex())
+                var buf = StringBuilder()
+                for (s in sentences) {
+                    if (buf.length + s.length > maxLen && buf.isNotEmpty()) {
+                        result.add(buf.toString())
+                        buf = StringBuilder()
+                    }
+                    if (s.length > maxLen) {
+                        // 超长无标点句，硬切
+                        var i = 0
+                        while (i < s.length) {
+                            val end = (i + maxLen).coerceAtMost(s.length)
+                            result.add(s.substring(i, end))
+                            i = end
+                        }
+                    } else {
+                        buf.append(s)
+                    }
+                }
+                if (buf.isNotEmpty()) result.add(buf.toString())
+            }
+        }
+        return result
     }
 
     /** LibreTranslate 公共节点兜底（适合中长文本） */

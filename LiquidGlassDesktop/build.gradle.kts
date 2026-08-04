@@ -32,8 +32,8 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
-            // v2.11.0：大版本完善 - UI调亮/翻译额度修复/会员体系/音乐修复/支付宝/Beta/词典扩充
-            packageVersion = "2.11.0"
+            // v2.11.1：UI再提亮/翻译长文本分段/音乐音质降级/emoji清除
+            packageVersion = "2.11.1"
             description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
             windows {

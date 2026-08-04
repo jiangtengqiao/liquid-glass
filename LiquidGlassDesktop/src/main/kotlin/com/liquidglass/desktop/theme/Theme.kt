@@ -18,25 +18,25 @@ import androidx.compose.ui.graphics.Color
  */
 object LiquidGlassTheme {
 
-    // ---- 底层颜色（大幅提亮）----
-    /** 主背景 明亮蓝紫夜空 #1E1E42（亮度 0.12，比原来亮 3 倍） */
-    val backgroundColor: Color = Color(0xFF1E1E42)
+    // ---- 底层颜色（v2.11.1 再次大幅提亮）----
+    /** 主背景 明亮蓝紫 #2A2A5A（亮度 0.18，用户反馈"还是太暗"再提亮） */
+    val backgroundColor: Color = Color(0xFF2A2A5A)
 
-    /** 表面层（卡片底）#2D2D5A（亮度 0.18），与背景区分 */
-    val surfaceColor: Color = Color(0xFF2D2D5A)
+    /** 表面层（卡片底）#3A3A72（亮度 0.24） */
+    val surfaceColor: Color = Color(0xFF3A3A72)
 
-    /** 表面层加深（输入框/下拉）#3A3A70 */
-    val surfaceVariant: Color = Color(0xFF3A3A70)
+    /** 表面层加深（输入框/下拉）#484880 */
+    val surfaceVariant: Color = Color(0xFF484880)
 
-    /** 玻璃面板底色 #252550（亮度 0.15，更通透） */
-    val glassBaseColor: Color = Color(0xFF252550)
+    /** 玻璃面板底色 #303060（亮度 0.20，更通透） */
+    val glassBaseColor: Color = Color(0xFF303060)
 
-    // ---- 文字色（提亮，保证对比度）----
-    /** 主文字色 #F0F0FF（亮度 0.91） */
-    val onSurfaceColor: Color = Color(0xFFF0F0FF)
+    // ---- 文字色（v2.11.1 提升至纯白，解决"文字可见度"问题）----
+    /** 主文字色 #FFFFFF 纯白（用户："文字可见度绝对不能容忍"） */
+    val onSurfaceColor: Color = Color(0xFFFFFFFF)
 
-    /** 次要文字色 #B8B8D8（亮度 0.52，对比度 7.5:1，过 AAA） */
-    val onSurfaceMuted: Color = Color(0xFFB8B8D8)
+    /** 次要文字色 #D0D0F0（亮度 0.75，对比度 9:1） */
+    val onSurfaceMuted: Color = Color(0xFFD0D0F0)
 
     /** 高对比文字（纯白）#FFFFFF */
     val onSurfaceBright: Color = Color(0xFFFFFFFF)
@@ -56,12 +56,12 @@ object LiquidGlassTheme {
 
     // ---- 玻璃常量 ----
     /**
-     * 玻璃表面主透明度 0.78（提亮：底色更亮，玻璃也略提亮保持通透感）
+     * 玻璃表面主透明度 0.85（v2.11.1 提亮，增强文字可见度）
      */
-    const val glassAlpha: Float = 0.78f
+    const val glassAlpha: Float = 0.85f
 
     /** 玻璃表面高亮透明度（用于悬浮/选中态） */
-    const val glassAlphaBright: Float = 0.88f
+    const val glassAlphaBright: Float = 0.92f
 
     /** 玻璃边框色（白色细边框，提亮到 0.18） */
     val glassBorder: Color = Color.White.copy(alpha = 0.18f)
