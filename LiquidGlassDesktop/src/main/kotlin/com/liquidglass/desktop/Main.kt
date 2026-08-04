@@ -269,7 +269,11 @@ fun App() {
             if (showUpdateDialog) {
                 com.liquidglass.desktop.ui.UpdateDialog(
                     onDismiss = { showUpdateDialog = false },
-                    onExitApplication = { exitApplication() }
+                    onExitApplication = {
+                        // 启动安装程序后立即退出当前 JVM，释放 exe 文件占用
+                        // 让 Inno Setup 能正常替换文件，避免安装损坏
+                        kotlin.system.exitProcess(0)
+                    }
                 )
             }
         }
