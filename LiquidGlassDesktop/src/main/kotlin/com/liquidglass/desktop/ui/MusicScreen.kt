@@ -231,6 +231,8 @@ fun MusicScreen() {
         }
     }
 
+    // 外层 Box：让 PlayerBar 的 align(BottomCenter) 和抽屉的 align 可用
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize().padding(bottom = 96.dp)) {
         // ===== 顶部：Tab + 搜索框 =====
         MusicTopBar(
@@ -343,6 +345,7 @@ fun MusicScreen() {
             onClose = { showSettings = false }
         )
     }
+    } // Box 结束
 }
 
 // ==================== 顶部 Tab + 搜索框 ====================
@@ -842,9 +845,6 @@ private fun LocalTab(
     var scanProgress by remember { mutableStateOf<LocalMusicScanner.ScanProgress?>(null) }
     var scanDir by remember { mutableStateOf(System.getProperty("user.home")) }
 
-    // 文件夹选择对话框
-    var showDirPicker by remember { mutableStateOf(false) }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -876,7 +876,18 @@ private fun LocalTab(
                     )
                 }
                 Spacer(Modifier.width(8.dp))
-                OutlinedButton(onClick = { showDirPicker = true }) { Text("选择") }
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            val chooser = javax.swing.JFileChooser(scanDir)
+                            chooser.fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+                            chooser.dialogTitle = "选择音乐目录"
+                            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                                scanDir = chooser.selectedFile.absolutePath
+                            }
+                        }
+                    }
+                }) { Text("选择") }
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
@@ -921,19 +932,6 @@ private fun LocalTab(
         } else if (!scanning) {
             item { EmptyState("点击「扫描」按钮添加本地音乐\n支持 MP3 格式") }
         }
-    }
-
-    if (showDirPicker) {
-        androidx.compose.ui.window.DirectoryDialog(
-            title = "选择音乐目录",
-            initialDirectory = scanDir,
-            onResult = { path ->
-                if (path != null) {
-                    scanDir = path
-                }
-                showDirPicker = false
-            }
-        )
     }
 }
 
@@ -1102,7 +1100,7 @@ private fun PlayerBar(
                                     val change = event.changes.firstOrNull() ?: continue
                                     val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
                                     if (event.type == PointerEventType.Press ||
-                                        (event.type == PointerEventType.Drag && change.pressed)) {
+                                        (event.type == PointerEventType.Move && change.pressed)) {
                                         val targetMs = (ratio * duration).toLong()
                                         seekingMs = targetMs
                                     }

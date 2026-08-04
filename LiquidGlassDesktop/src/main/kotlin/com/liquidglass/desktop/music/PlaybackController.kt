@@ -5,30 +5,26 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import javazoom.jlayer.player.JavaSoundAudioDevice
-import javazoom.jlayer.player.advanced.AdvancedPlayer
-import javazoom.jlayer.player.advanced.PlaybackEvent
-import javazoom.jlayer.player.advanced.PlaybackListener
-import java.io.File
+import javazoom.jl.player.advanced.AdvancedPlayer
+import javazoom.jl.player.advanced.PlaybackEvent
+import javazoom.jl.player.advanced.PlaybackListener
 import java.io.InputStream
+import java.lang.reflect.Method
 import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
+import java.io.File
 
 /**
  * 桌面版音乐播放控制器（基于 JLayer AdvancedPlayer）。
  *
- * 设计目标：
- *  - 单实例，全局唯一播放器
- *  - 支持在线 URL 与本地文件路径双源
- *  - Compose State 直驱：state / positionMs / durationMs / volume
- *  - 播放/暂停/恢复/停止/拖动/音量/完成回调
- *  - 自动无缝衔接下一首（通过 [onComplete] 回调由 MusicScreen 控制）
+ * JLayer 1.0.1 正确包名：javazoom.jl.player.advanced.*
+ * - AdvancedPlayer(InputStream) 用默认 JavaSoundAudioDevice
+ * - setPlayBackListener 设置监听（playBackListener 字段是 protected，不能直接赋值）
+ * - close() 停止播放（无 stop() 方法）
  *
- * 进度估算：MP3 帧时长固定（44.1kHz ≈ 26.12ms），按帧计数换算毫秒；
- * 若调用方传入 [durationMs]，则按比例钳制避免超出。
- *
- * 拖动实现：关闭当前流，重开新流并跳过 [startFrame] 帧后播放——JLayer 不支持原地 seek。
+ * 进度估算：MP3 帧时长固定（44.1kHz ≈ 26ms），按帧计数换算毫秒。
+ * 拖动实现：关闭当前流，重开新流并跳过 startFrame 帧后播放。
  */
 class PlaybackController {
 
@@ -62,16 +58,15 @@ class PlaybackController {
     private val logger = Logger.getLogger("PlaybackController")
 
     private var player: AdvancedPlayer? = null
-    private var audioDevice: JavaSoundAudioDevice? = null
     private var openedStream: InputStream? = null
 
     /** 暂停时记录的偏移帧（用于从该帧恢复播放） */
     private var pausedAtFrame: Int = 0
 
-    /** 标志：当前 stop 是为 seek / resume 重启而触发，不应被当自然结束 */
+    /** 标志：当前 close 是为 seek / resume 重启而触发，不应被当自然结束 */
     private var isRestarting: Boolean = false
 
-    /** 标志：当前 stop 是用户主动暂停触发 */
+    /** 标志：当前 close 是用户主动暂停触发 */
     private var isUserPause: Boolean = false
 
     /** 播放起始墙钟时间（ms），用于估算 positionMs */
@@ -111,21 +106,18 @@ class PlaybackController {
             }
             openedStream = stream
 
-            val device = JavaSoundAudioDevice()
-            applyVolume(device, volume)
-            audioDevice = device
-
-            val p = AdvancedPlayer(stream, device)
+            // 用默认构造（内部自动创建 JavaSoundAudioDevice）
+            val p = AdvancedPlayer(stream)
             player = p
 
-            p.playBackListener = object : PlaybackListener() {
+            p.setPlayBackListener(object : PlaybackListener() {
                 override fun playbackStarted(evt: PlaybackEvent?) {
-                    // 线路已打开，再次应用音量确保生效
-                    applyVolume(device, volume)
                     if (!isRestarting) {
                         playStartedAt = System.currentTimeMillis()
                         state = State.PLAYING
                     }
+                    // 线路已打开，应用音量
+                    applyVolume(p, volume)
                 }
 
                 override fun playbackFinished(evt: PlaybackEvent?) {
@@ -140,7 +132,7 @@ class PlaybackController {
                     startPositionMs = 0L
                     onComplete?.invoke()
                 }
-            }
+            })
 
             // 起始位置 = fromFrame 对应的 ms（用于 resume/seek 后保持累计进度）
             startPositionMs = estimateMsFromFrame(fromFrame)
@@ -196,7 +188,7 @@ class PlaybackController {
         pausedAtFrame = estimateFrameFromMs(positionMs)
         isUserPause = true
         try {
-            player?.stop()
+            player?.close()
         } catch (_: Exception) { }
         isUserPause = false
         state = State.PAUSED
@@ -268,27 +260,41 @@ class PlaybackController {
 
     fun setVolume(v: Float) {
         volume = v.coerceIn(0f, 1f)
-        audioDevice?.let { applyVolume(it, volume) }
+        player?.let { applyVolume(it, volume) }
     }
 
-    /** 在 [JavaSoundAudioDevice] 上应用音量；某些 JLayer 版本无 setVolume 方法时静默失败 */
-    private fun applyVolume(device: JavaSoundAudioDevice, vol: Float) {
+    /**
+     * 通过反射在 AdvancedPlayer 内部的 audio device 上应用音量。
+     * AdvancedPlayer 持有 protected AudioDevice audio 字段，
+     * JavaSoundAudioDevice 有 setLineGain(float) 或 setVolume(float) 方法。
+     */
+    private fun applyVolume(p: AdvancedPlayer, vol: Float) {
         try {
-            val m = JavaSoundAudioDevice::class.java.getMethod("setVolume", Float::class.javaPrimitiveType)
-            m.invoke(device, vol)
-        } catch (_: NoSuchMethodException) {
-            // 老版本 JLayer 没有该方法；尝试 setLineGain
-            try {
-                val m = JavaSoundAudioDevice::class.java.getMethod("setLineGain", Float::class.javaPrimitiveType)
-                m.invoke(device, vol)
-            } catch (_: Exception) { /* 接受无音量控制 */ }
-        } catch (_: Exception) { /* 接受无音量控制 */ }
+            val audioField = AdvancedPlayer::class.java.getDeclaredField("audio")
+            audioField.isAccessible = true
+            val audioDevice = audioField.get(p) ?: return
+            val deviceClass = audioDevice.javaClass
+            // 尝试 setVolume
+            val setVolume: Method? = try {
+                deviceClass.getMethod("setVolume", Float::class.javaPrimitiveType)
+            } catch (_: NoSuchMethodException) { null }
+            if (setVolume != null) {
+                setVolume.invoke(audioDevice, vol)
+                return
+            }
+            // 尝试 setLineGain
+            val setLineGain: Method? = try {
+                deviceClass.getMethod("setLineGain", Float::class.javaPrimitiveType)
+            } catch (_: NoSuchMethodException) { null }
+            setLineGain?.invoke(audioDevice, vol)
+        } catch (_: Exception) {
+            // 接受无音量控制
+        }
     }
 
     /**
      * 帧数 → 毫秒。MP3 一帧 = 1152 samples / sampleRate。
-     * 常见 44.1kHz → 26.12ms/帧；48kHz → 24ms/帧。
-     * 我们用 26ms 作为默认估算（绝大多数网易云在线音频都是 44.1kHz）。
+     * 常见 44.1kHz → 26.12ms/帧；用 26ms 估算。
      */
     private fun estimateMsFromFrame(frame: Int): Long {
         return (frame.toLong() * 26L)
