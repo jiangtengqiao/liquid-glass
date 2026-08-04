@@ -375,7 +375,7 @@ fun BetaPioneerScreen() {
                     Text("正在拉取 version.json...", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
                 }
                 changelog != null -> Text(
-                    text = changelog,
+                    text = changelog!!,
                     color = LiquidGlassTheme.onSurfaceColor,
                     fontSize = 12.sp
                 )
