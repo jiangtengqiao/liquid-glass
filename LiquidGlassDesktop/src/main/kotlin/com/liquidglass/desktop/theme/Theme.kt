@@ -17,17 +17,18 @@ import androidx.compose.ui.graphics.Color
 object LiquidGlassTheme {
 
     // ---- 底层颜色（Material 3 surface 角色）----
-    /** 主背景 深空黑 #08080F（亮度 0.026）*/
-    val backgroundColor: Color = Color(0xFF08080F)
+    /** 主背景 午夜蓝紫 #0A0A1A（亮度 0.04，比纯黑通透）
+     *  v2.10.1：从 #08080F 提亮到 #0A0A1A，配合调亮的流体光斑更显通透 */
+    val backgroundColor: Color = Color(0xFF0A0A1A)
 
-    /** 表面层（卡片底）#14141F（亮度 0.066），与背景区分但不过亮 */
-    val surfaceColor: Color = Color(0xFF14141F)
+    /** 表面层（卡片底）#1C1C33（亮度 0.11），与背景区分但不过亮 */
+    val surfaceColor: Color = Color(0xFF1C1C33)
 
-    /** 表面层加深（输入框/下拉）#1C1C2A */
-    val surfaceVariant: Color = Color(0xFF1C1C2A)
+    /** 表面层加深（输入框/下拉）#252545 */
+    val surfaceVariant: Color = Color(0xFF252545)
 
-    /** 玻璃面板底色（深色玻璃，alpha 高保证文字可读）#0F0F1E */
-    val glassBaseColor: Color = Color(0xFF0F0F1E)
+    /** 玻璃面板底色（深色玻璃，alpha 高保证文字可读）#15152E */
+    val glassBaseColor: Color = Color(0xFF15152E)
 
     // ---- 文字色（Material 3 onSurface 角色，三级强调）----
     /** 主文字色 #EAEAF5（亮度 0.879），对比度 14.8:1 */

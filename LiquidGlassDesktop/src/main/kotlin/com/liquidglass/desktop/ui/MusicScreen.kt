@@ -465,17 +465,32 @@ private fun DiscoverTab(
     var djRadios by remember { mutableStateOf<List<NetEaseApi.DjProgram>>(emptyList()) }
     var mvs by remember { mutableStateOf<List<NetEaseApi.MvInfo>>(emptyList()) }
 
+    // 加载状态：true 表示正在加载中
+    var loading by remember { mutableStateOf(true) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var retryKey by remember { mutableStateOf(0) }
+
     // 加载发现页数据
-    LaunchedEffect(Unit) {
-        scope.launch { hotWords = NetEaseApi.hotSearch() }
-        scope.launch { recommendPlaylists = NetEaseApi.recommendPlaylists() }
-        scope.launch { toplists = NetEaseApi.toplist() }
-        scope.launch { dailyRecommend = NetEaseApi.recommendSongs() }
-        scope.launch { newSongs = NetEaseApi.newSongs(0) }
-        scope.launch { newAlbums = NetEaseApi.newAlbums() }
-        scope.launch { personalFm = NetEaseApi.personalFm() }
-        scope.launch { djRadios = NetEaseApi.recommendDj() }
-        scope.launch { mvs = NetEaseApi.recommendMv() }
+    LaunchedEffect(retryKey) {
+        loading = true
+        loadError = null
+        try {
+            kotlinx.coroutines.coroutineScope {
+                launch { hotWords = NetEaseApi.hotSearch() }
+                launch { recommendPlaylists = NetEaseApi.recommendPlaylists() }
+                launch { toplists = NetEaseApi.toplist() }
+                launch { dailyRecommend = NetEaseApi.recommendSongs() }
+                launch { newSongs = NetEaseApi.newSongs(0) }
+                launch { newAlbums = NetEaseApi.newAlbums() }
+                launch { personalFm = NetEaseApi.personalFm() }
+                launch { djRadios = NetEaseApi.recommendDj() }
+                launch { mvs = NetEaseApi.recommendMv() }
+            }
+        } catch (e: Exception) {
+            loadError = e.message ?: "加载失败"
+        } finally {
+            loading = false
+        }
     }
 
     LazyColumn(
@@ -499,6 +514,63 @@ private fun DiscoverTab(
             item { EmptyState("没有找到相关歌曲") }
         } else if (searching) {
             item { EmptyState("搜索中…") }
+        } else if (loading) {
+            // 加载中：显示骨架/加载提示
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.material.CircularProgressIndicator(
+                            color = LiquidGlassTheme.accentSecondary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "正在加载音乐数据...",
+                            color = LiquidGlassTheme.onSurfaceMuted,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        } else if (loadError != null) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "加载失败",
+                            color = LiquidGlassTheme.announcementHigh,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            loadError!!,
+                            color = LiquidGlassTheme.onSurfaceMuted,
+                            fontSize = 12.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        androidx.compose.material.OutlinedButton(
+                            onClick = {
+                                // 通过 retryKey 自增触发 LaunchedEffect 重新加载
+                                retryKey++
+                            }
+                        ) { Text("重试") }
+                    }
+                }
+            }
+        } else if (hotWords.isEmpty() && recommendPlaylists.isEmpty() &&
+            toplists.isEmpty() && dailyRecommend.isEmpty() && newSongs.isEmpty()) {
+            // 全部加载完但都是空（可能是网络异常导致全部接口失败）
+            item {
+                EmptyState("暂时无法获取音乐数据\n请检查网络连接或稍后重试")
+            }
         }
 
         // 热搜词

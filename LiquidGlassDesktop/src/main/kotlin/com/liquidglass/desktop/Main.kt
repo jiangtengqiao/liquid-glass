@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -68,7 +69,7 @@ import java.util.prefs.Preferences
 import kotlin.math.PI
 
 /** 侧边栏可导航的屏幕 */
-enum class Screen { Home, Music, Translation, About, BetaPioneer }
+enum class Screen { Home, Music, Translation, About, BetaPioneer, Login }
 
 /**
  * 应用入口：创建窗口并托管 App
@@ -137,16 +138,21 @@ fun App() {
     }
 
     // 流体背景动画驱动时间
+    // 关键修复：用 Reverse 而非 Restart，避免 time 跳回 0 时 sin 内部子相位跳变产生闪烁
+    // 0 → 2π → 0 → 2π 来回摆动，sin(0) = sin(2π) = 0 自然吻合，无跳变
     val transition = rememberInfiniteTransition(label = "fluid")
     val time by transition.animateFloat(
         initialValue = 0f,
         targetValue = (2f * PI).toFloat(),
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(durationMillis = 18000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "time"
     )
+
+    // 鼠标位置（驱动流体物理交互：光斑会被鼠标吸引/排斥）
+    var mousePos by remember { mutableStateOf(Offset(0.5f, 0.5f)) }
 
     MaterialTheme(
         colors = darkColors(
@@ -162,9 +168,26 @@ fun App() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(LiquidGlassTheme.backgroundColor)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                mousePos = Offset(
+                                    (change.position.x / size.width).coerceIn(0f, 1f),
+                                    (change.position.y / size.height).coerceIn(0f, 1f)
+                                )
+                            }
+                        }
+                    }
+                }
         ) {
-            // 流体动画背景
-            FluidBackground(time = time, modifier = Modifier.fillMaxSize())
+            // 流体动画背景（time + 鼠标位置驱动）
+            FluidBackground(
+                time = time,
+                mousePos = mousePos,
+                modifier = Modifier.fillMaxSize()
+            )
 
             Row(modifier = Modifier.fillMaxSize()) {
                 // 侧边栏导航
@@ -198,6 +221,7 @@ fun App() {
                         Screen.Translation -> TranslationScreen(manager = translationManager)
                         Screen.About -> AboutScreen()
                         Screen.BetaPioneer -> BetaPioneerScreen(betaPioneerManager = betaPioneerManager)
+                        Screen.Login -> com.liquidglass.desktop.ui.LoginScreen()
                     }
                 }
             }
@@ -244,7 +268,8 @@ fun App() {
             // v2.9.4：启动时发现新版本的更新弹窗
             if (showUpdateDialog) {
                 com.liquidglass.desktop.ui.UpdateDialog(
-                    onDismiss = { showUpdateDialog = false }
+                    onDismiss = { showUpdateDialog = false },
+                    onExitApplication = { exitApplication() }
                 )
             }
         }
@@ -413,6 +438,7 @@ private val navItems: List<NavItem> = listOf(
     NavItem(Screen.Home, "首页", "⌂"),
     NavItem(Screen.Music, "音乐", "♪"),
     NavItem(Screen.Translation, "翻译中心", "文"),
+    NavItem(Screen.Login, "账号", "⊙"),
     NavItem(Screen.About, "关于", "ⓘ"),
     NavItem(Screen.BetaPioneer, "Beta 先锋", "★")
 )

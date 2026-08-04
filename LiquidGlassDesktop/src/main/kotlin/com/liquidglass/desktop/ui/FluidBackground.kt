@@ -8,63 +8,92 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.liquidglass.desktop.theme.LiquidGlassTheme
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * 流体动画背景 v2 - 增强色彩折射与层次感
+ * 流体动画背景 v3 - 调亮色系 + 鼠标物理交互 + 无缝循环
  *
- * 设计依据（2026 glassmorphism 权威指南 + iOS 26 Liquid Glass）：
- * 1. 多层光斑叠加（7 个 metaball）形成色彩流动折射
- * 2. 大半径柔光 + 小半径高光双层结构
- * 3. 顶部/底部渐变暗角增强深度
- * 4. 细微网格纹理增强玻璃质感
- * 5. 缓慢运动避免眩晕，10s 一个周期
+ * 设计依据（iOS 26 Liquid Glass + 2026 glassmorphism 指南）：
+ * 1. 调亮色系：底色从 #08080F 提升至 #14142B（午夜蓝紫，更通透不死黑）
+ * 2. 鼠标交互：鼠标作为「引力源」吸引最近的光斑，光斑被吸引后绕鼠标旋转
+ *    形成「液态玻璃实时物理引擎交互流动」效果
+ * 3. 无缝循环：使用周期性 sin 函数，动画 time 自然连续（在 Main.kt 已用 Reverse）
+ * 4. 多层光斑：8 个大光斑柔光层 + 6 个小高光层 + 鼠标焦点光晕
+ * 5. 顶部高光 + 四周暗角增强深度聚焦
  *
- * @param time 动画驱动时间，单位为弧度相位
+ * @param time 动画驱动时间（弧度相位）
+ * @param mousePos 鼠标位置归一化坐标 (0~1, 0~1)
  */
 @Composable
 fun FluidBackground(
     time: Float,
+    mousePos: Offset = Offset(0.5f, 0.5f),
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier) {
-        drawFluid(time)
+        drawFluid(time, mousePos)
     }
 }
 
-private fun DrawScope.drawFluid(time: Float) {
+private fun DrawScope.drawFluid(time: Float, mousePos: Offset) {
     val w = size.width
     val h = size.height
 
-    // ===== 第 0 层：深空底色（径向渐变，中心略亮）=====
+    // ===== 第 0 层：调亮底色（午夜蓝紫渐变）=====
+    // 关键改进：从 #08080F 提升到 #14142B，整体更通透有质感
     drawRect(
         brush = Brush.radialGradient(
             colors = listOf(
-                Color(0xFF12121F),
-                LiquidGlassTheme.backgroundColor,
-                Color(0xFF05050A)
+                Color(0xFF1F1F3D),      // 中心略亮（紫蓝调）
+                Color(0xFF14142B),      // 中段
+                Color(0xFF0A0A1A)       // 边缘略深（保留聚焦感）
             ),
-            center = Offset(w * 0.5f, h * 0.4f),
-            radius = maxOf(w, h) * 0.8f
+            center = Offset(w * 0.5f, h * 0.45f),
+            radius = maxOf(w, h) * 0.85f
         )
     )
 
     val colors = LiquidGlassTheme.fluidColors
-    val baseRadius = minOf(w, h) * 0.42f
+    val baseRadius = minOf(w, h) * 0.45f
 
-    // ===== 第 1 层：7 个大光斑（柔光层，alpha 低，营造氛围）=====
-    for (i in 0 until 7) {
-        val phase = i * 0.9f
-        val cx = w * (0.5f + 0.38f * sin(time * 0.5f + phase))
-        val cy = h * (0.5f + 0.38f * sin(time * 0.37f + phase * 1.3f))
-        val r = baseRadius * (0.9f + 0.25f * sin(time * 0.7f + phase))
+    // 鼠标物理源（屏幕坐标）
+    val mx = w * mousePos.x
+    val my = h * mousePos.y
+
+    // ===== 第 1 层：8 个大光斑（柔光层 + 鼠标引力）=====
+    // 鼠标作为引力源：每个光斑都被鼠标吸引，距离越近吸引力越大
+    // 形成「液态玻璃被鼠标牵扯流动」的物理感
+    for (i in 0 until 8) {
+        val phase = i * 0.785f  // 0~2π 均匀分布
+
+        // 基础轨迹（流体自主运动）
+        val baseX = w * (0.5f + 0.36f * sin(time + phase))
+        val baseY = h * (0.5f + 0.36f * sin(time * 0.73f + phase * 1.3f))
+
+        // 鼠标引力：距离鼠标越近，光斑被拉得越靠近鼠标
+        val dx = mx - baseX
+        val dy = my - baseY
+        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+        val maxDist = maxOf(w, h) * 0.6f
+        // 引力强度：距离反比，最近时光斑位移可达 35%
+        val attractStrength = (1f - (dist / maxDist).coerceIn(0f, 1f)) * 0.35f
+        // 加入绕鼠标的旋转分量（避免全部光斑都堆叠在鼠标处）
+        val swirl = sin(time * 1.5f + phase) * 0.15f
+        val cx = baseX + dx * attractStrength + cos(time * 1.2f + phase) * swirl * w * 0.1f
+        val cy = baseY + dy * attractStrength + sin(time * 1.2f + phase) * swirl * h * 0.1f
+
+        // 半径随距离鼠标变化：近鼠标时光斑略膨胀（被点亮感）
+        val r = baseRadius * (0.85f + 0.25f * sin(time * 0.6f + phase) +
+                attractStrength * 0.15f)
+
         val color = colors[i % colors.size]
-
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    color.copy(alpha = 0.42f),
-                    color.copy(alpha = 0.12f),
+                    color.copy(alpha = 0.48f),
+                    color.copy(alpha = 0.15f),
                     Color.Transparent
                 ),
                 center = Offset(cx, cy),
@@ -75,19 +104,30 @@ private fun DrawScope.drawFluid(time: Float) {
         )
     }
 
-    // ===== 第 2 层：5 个小高光斑（折射高光，alpha 高，色彩饱和）=====
-    for (i in 0 until 5) {
-        val phase = i * 1.6f + 0.5f
-        val cx = w * (0.5f + 0.3f * sin(time * 0.8f + phase))
-        val cy = h * (0.5f + 0.3f * sin(time * 0.6f + phase * 0.7f))
-        val r = baseRadius * 0.35f * (0.85f + 0.15f * sin(time * 1.1f + phase))
+    // ===== 第 2 层：6 个小高光斑（折射高光，alpha 高，色彩饱和）=====
+    for (i in 0 until 6) {
+        val phase = i * 1.05f + 0.5f
+        val baseX = w * (0.5f + 0.3f * sin(time * 0.85f + phase))
+        val baseY = h * (0.5f + 0.3f * cos(time * 0.65f + phase * 0.7f))
+
+        // 鼠标对高光斑的吸引力更强（高光更灵活）
+        val dx = mx - baseX
+        val dy = my - baseY
+        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+        val maxDist = maxOf(w, h) * 0.5f
+        val attractStrength = (1f - (dist / maxDist).coerceIn(0f, 1f)) * 0.45f
+        val cx = baseX + dx * attractStrength
+        val cy = baseY + dy * attractStrength
+
+        val r = baseRadius * 0.32f * (0.85f + 0.18f * sin(time * 1.1f + phase) +
+                attractStrength * 0.2f)
         val color = colors[(i + 2) % colors.size]
 
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    color.copy(alpha = 0.55f),
-                    color.copy(alpha = 0.2f),
+                    color.copy(alpha = 0.62f),
+                    color.copy(alpha = 0.22f),
                     Color.Transparent
                 ),
                 center = Offset(cx, cy),
@@ -98,9 +138,27 @@ private fun DrawScope.drawFluid(time: Float) {
         )
     }
 
-    // ===== 第 3 层：细微网格纹理（增强玻璃质感，极淡）=====
-    val gridSpacing = 48f
-    val gridColor = Color.White.copy(alpha = 0.015f)
+    // ===== 第 3 层：鼠标焦点光晕（强化交互感）=====
+    // 鼠标处一个柔和的光晕，色彩随时间在 fluidColors 间循环
+    val focusColor = colors[((time / (2f * PI.toFloat())).toInt() % colors.size).coerceIn(0, colors.size - 1)]
+    val focusR = baseRadius * 0.5f
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                focusColor.copy(alpha = 0.18f),
+                focusColor.copy(alpha = 0.06f),
+                Color.Transparent
+            ),
+            center = Offset(mx, my),
+            radius = focusR
+        ),
+        center = Offset(mx, my),
+        radius = focusR
+    )
+
+    // ===== 第 4 层：细微网格纹理（增强玻璃质感，极淡）=====
+    val gridSpacing = 56f
+    val gridColor = Color.White.copy(alpha = 0.018f)
     var x = 0f
     while (x < w) {
         drawLine(
@@ -122,11 +180,11 @@ private fun DrawScope.drawFluid(time: Float) {
         y += gridSpacing
     }
 
-    // ===== 第 4 层：顶部高光渐变（模拟光源从上方照射）=====
+    // ===== 第 5 层：顶部高光（模拟光源从上方照射，加亮）=====
     drawRect(
         brush = Brush.verticalGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.04f),
+                Color.White.copy(alpha = 0.06f),
                 Color.Transparent,
                 Color.Transparent
             ),
@@ -135,29 +193,16 @@ private fun DrawScope.drawFluid(time: Float) {
         )
     )
 
-    // ===== 第 5 层：四周暗角（vignette，增强深度聚焦）=====
+    // ===== 第 6 层：四周暗角（保留聚焦感，但减弱避免太暗）=====
     drawRect(
         brush = Brush.radialGradient(
             colors = listOf(
                 Color.Transparent,
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.35f)
+                Color.Black.copy(alpha = 0.22f)   // 从 0.35 减到 0.22，避免太暗
             ),
             center = Offset(w * 0.5f, h * 0.5f),
-            radius = maxOf(w, h) * 0.7f
-        )
-    )
-
-    // ===== 第 6 层：底部加深（让悬浮内容更突出）=====
-    drawRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(
-                Color.Transparent,
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.3f)
-            ),
-            startY = h * 0.6f,
-            endY = h
+            radius = maxOf(w, h) * 0.75f
         )
     )
 }

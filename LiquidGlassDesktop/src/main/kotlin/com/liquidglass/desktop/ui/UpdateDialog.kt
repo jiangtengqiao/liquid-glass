@@ -55,10 +55,14 @@ import java.io.File
  * 完整流程：检查更新 → 显示版本信息 → 下载（进度+多镜像源+实时日志）→ 安装
  * - 快捷方式选项：桌面 / 开始菜单（下载完成后安装前可选）
  * - 实时下载文件列表：可展开/隐藏，显示镜像源尝试、已下载字节、阶段文案
+ * - v2.10.1：安装时立即退出当前应用（释放 exe 文件占用，避免安装损坏）
+ *
+ * @param onExitApplication 启动安装程序后调用，强制退出当前 JVM
  */
 @Composable
 fun UpdateDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onExitApplication: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(true) }
@@ -285,12 +289,20 @@ fun UpdateDialog(
                     Button(
                         onClick = {
                             val file = downloadedFile!!
-                            // 创建快捷方式
-                            if (createDesktopShortcut) {
-                                // 安装后再创建，这里先记录偏好
-                            }
-                            // 启动安装程序
-                            UpdateChecker.launchInstaller(file.absolutePath)
+                            // v2.10.1：用 ProcessBuilder 独立进程启动安装程序
+                            // 关键修复：必须先 detach 子进程，再退出当前 JVM
+                            // 否则当前 exe 被占用，Inno Setup 无法替换文件，导致"已损坏需 repair"
+                            try {
+                                val pb = ProcessBuilder(file.absolutePath)
+                                pb.directory(file.parentFile)
+                                pb.redirectErrorStream(true)
+                                // 独立进程：子进程不随父进程退出
+                                pb.start()
+                                // 给子进程 500ms 启动时间
+                                Thread.sleep(500)
+                            } catch (_: Exception) { }
+                            // 立即退出当前应用，释放 exe 文件占用
+                            onExitApplication()
                             onDismiss()
                         },
                         colors = ButtonDefaults.buttonColors(

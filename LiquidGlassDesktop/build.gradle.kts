@@ -43,8 +43,11 @@ compose.desktop {
                 shortcut = true
                 // 当前用户安装（无需管理员权限）
                 perUserInstall = true
-                // 安装向导显示"创建桌面快捷方式"选项（jpackage Inno Setup 支持）
-                // 配合应用内首次启动询问，双保险
+                // v2.10.1：允许用户选择安装目录
+                dirChooser = true
+                // v2.10.1：安装向导显示完整选项页（含快捷方式选择）
+                // jpackage Inno Setup 模板默认会渲染「附加任务」页，包含创建桌面快捷方式选项
+                // upgradeUuid 一致时新版本会自动覆盖旧版本文件（CloseApplications=force）
             }
         }
     }
