@@ -301,7 +301,7 @@ fun MusicScreen() {
         onPrev = ::playPrev,
         onNext = ::playNext,
         onSeek = { ms -> player.seekTo(ms) },
-        onVolumeChange = { v -> player.setVolume(v) },
+        onVolumeChange = { v -> player.changeVolume(v) },
         onToggleQueue = { showQueue = !showQueue; showLyrics = false; showSettings = false },
         onToggleLyrics = { showLyrics = !showLyrics; showQueue = false; showSettings = false },
         onToggleSettings = { showSettings = !showSettings; showQueue = false; showLyrics = false },

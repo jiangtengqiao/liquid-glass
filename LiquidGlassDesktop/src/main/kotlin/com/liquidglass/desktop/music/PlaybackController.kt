@@ -258,7 +258,7 @@ class PlaybackController {
         }
     }
 
-    fun setVolume(v: Float) {
+    fun changeVolume(v: Float) {
         volume = v.coerceIn(0f, 1f)
         player?.let { applyVolume(it, volume) }
     }
