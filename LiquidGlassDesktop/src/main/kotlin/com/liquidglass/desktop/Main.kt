@@ -38,7 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectHoverGestures
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.awaitPointerEvent
+import androidx.compose.ui.input.pointer.awaitPointerEventScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -289,10 +291,16 @@ private fun Sidebar(
                     .background(bgColor)
                     .clickable { onSelect(item.screen) }
                     .pointerInput(Unit) {
-                        detectHoverGestures(
-                            onEnter = { hovered = true },
-                            onExit = { hovered = false }
-                        )
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                when (event.type) {
+                                    PointerEventType.Enter -> hovered = true
+                                    PointerEventType.Exit -> hovered = false
+                                    else -> {}
+                                }
+                            }
+                        }
                     }
             ) {
                 Row(
