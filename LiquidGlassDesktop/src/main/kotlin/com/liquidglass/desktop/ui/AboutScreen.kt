@@ -61,6 +61,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
     var checking by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var checkResult by remember { mutableStateOf<String?>(null) } // "latest" / "error" / null
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     // 启动时自动检查一次（非强制，受 30 分钟节流）
     LaunchedEffect(Unit) {
@@ -83,7 +84,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Desktop 版本 v2.9.2",
+                text = "Desktop 版本 v${UpdateChecker.LOCAL_VERSION}",
                 color = LiquidGlassTheme.accentSecondary
             )
             Spacer(Modifier.height(8.dp))
@@ -146,17 +147,17 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                 }
             }
 
-            // 发现新版本时显示下载按钮 + 更新说明
+            // 发现新版本时显示应用内下载按钮 + 更新说明
             updateInfo?.let { info ->
                 Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = { UpdateChecker.openDownloadPage(info.downloadUrl) },
+                    onClick = { showUpdateDialog = true },
                     colors = ButtonDefaults.buttonColors(
                         backgroundColor = LiquidGlassTheme.accentSecondary,
                         contentColor = LiquidGlassTheme.onAccent
                     )
                 ) {
-                    Text("前往下载新版本")
+                    Text("应用内下载 v${info.version}")
                 }
                 if (info.releaseNotes.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
@@ -181,6 +182,11 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         changelog.forEach { mega ->
             MegaVersionItem(mega)
         }
+    }
+
+    // 应用内更新下载对话框
+    if (showUpdateDialog) {
+        UpdateDialog(onDismiss = { showUpdateDialog = false })
     }
 }
 

@@ -161,20 +161,29 @@ class BetaPioneerManager {
         } ?: fallbackBetaInfo()
     }
 
-    /** 拉取并解析 beta-version.json 为结构化对象 */
+    /** 拉取并解析 beta-version.json 为结构化对象（jsDelivr 优先，raw 兜底） */
     private suspend fun fetchBetaInfoRaw(): BetaInfo? = withContext(Dispatchers.IO) {
+        // 多源尝试：jsDelivr CDN → raw.githubusercontent
+        for (url in listOf(BETA_URL, BETA_URL_FALLBACK)) {
+            val result = fetchBetaFromUrl(url)
+            if (result != null) return@withContext result
+        }
+        null
+    }
+
+    private fun fetchBetaFromUrl(urlStr: String): BetaInfo? {
         var conn: HttpURLConnection? = null
-        try {
-            conn = (URL(BETA_URL).openConnection() as HttpURLConnection).apply {
+        return try {
+            conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 10_000
                 readTimeout = 15_000
                 useCaches = false
             }
-            if (conn.responseCode != 200) return@withContext null
+            if (conn.responseCode != 200) return null
             val body = conn.inputStream.bufferedReader().use { it.readText() }
             val json = JSONObject(body)
             val url = json.optString("downloadUrl", "").takeIf { it.isNotBlank() }
-                ?: return@withContext null
+                ?: return null
             val fileName = url.substringAfterLast('/', "LiquidGlass-beta.exe")
             BetaInfo(
                 version = json.optString("version", "未知"),
@@ -337,7 +346,10 @@ class BetaPioneerManager {
     }
 
     companion object {
+        // jsDelivr 国内镜像优先，raw.githubusercontent 兜底
         private const val BETA_URL =
+            "https://cdn.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/beta-version.json"
+        private const val BETA_URL_FALLBACK =
             "https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/beta-version.json"
         private const val KEY_CODE = "beta_pioneer_code"
         private const val KEY_GEN_TIME = "beta_pioneer_gen_time"

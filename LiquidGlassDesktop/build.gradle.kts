@@ -30,8 +30,8 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
-            // v2.9.3：升级版本号，避免 jpackage 相同版本号触发 repair 模式不替换文件
-            packageVersion = "2.9.3"
+            // v2.9.4：玻璃 UI 重构（alpha 0.08→0.72 解决文字不可读）+ 应用内更新下载向导
+            packageVersion = "2.9.4"
             description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
             windows {

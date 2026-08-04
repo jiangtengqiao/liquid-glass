@@ -1,7 +1,7 @@
 {
-  "version": "2.9.3",
-  "versionCode": 52,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3/LiquidGlass-v2.9.3.apk",
-  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3/LiquidGlass-2.9.3.exe",
-  "releaseNotes": "v2.9.3 修复安装包升级问题 - 升级版本号修复jpackage相同版本号触发repair不替换文件+翻译中心(在线多源兜底+离线词典+会员体系+历史记录)+桌面适配工具集(计算器/倒计时/待办/记事本/密码生成器/单位换算)+Beta先锋UI优化(进度条+复制+持久化)+关于页折叠面板+侧边栏点击区域修复+首次启动桌面快捷方式询问"
+  "version": "2.9.4",
+  "versionCode": 53,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.4/LiquidGlass-v2.9.4.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.4/LiquidGlass-2.9.4.exe",
+  "releaseNotes": "v2.9.4 玻璃UI重构+应用内更新下载向导 - 修复文字与背景重叠不可读(glassAlpha 0.08→0.72 达WCAG对比度)+Material3色彩层级+应用内下载更新(多镜像源+进度+SHA256校验+快捷方式选项+实时下载日志展开隐藏)+Beta先锋jsDelivr国内镜像+UpdateChecker版本号同步"
 }
