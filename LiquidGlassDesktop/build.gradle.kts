@@ -30,19 +30,19 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
-            packageVersion = "2.9.2"
+            // v2.9.3：升级版本号，避免 jpackage 相同版本号触发 repair 模式不替换文件
+            packageVersion = "2.9.3"
             description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
-            // 安装包向导：让 jpackage 生成自带快捷方式与启动菜单的 EXE/MSI
-            // 注：jpackage 自带的安装界面相对简陋，
-            //     应用内的 Beta 下载向导提供更完整的"快捷方式选项 + 实时文件列表 + 展开/隐藏"体验。
             windows {
                 menuGroup = "LiquidGlass"
                 upgradeUuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                // 让 jpackage 安装时创建桌面快捷方式（Windows 安装向导的"创建快捷方式"步骤由此驱动）
+                // 开始菜单快捷方式
                 shortcut = true
-                // 安装时建议为当前用户安装（无需管理员权限）
+                // 当前用户安装（无需管理员权限）
                 perUserInstall = true
+                // 安装向导显示"创建桌面快捷方式"选项（jpackage Inno Setup 支持）
+                // 配合应用内首次启动询问，双保险
             }
         }
     }

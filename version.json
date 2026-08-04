@@ -1,7 +1,7 @@
 {
-  "version": "2.9.2",
-  "versionCode": 51,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2/LiquidGlass-v2.9.2.apk",
-  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2/LiquidGlass-2.9.2.exe",
-  "releaseNotes": "v2.9.2 大道至简版 - 主题精简为深色(纯黑)/浅色(纯白)/系统自动跟随三套+Beta先锋体验码系统(8道问卷+账户达标检测+55分阈值卡50%通过率+17-25位不规则码+校验位+验证激活+拉取beta内测版本)+用户日志上传系统(CrashHandler崩溃捕获+按天日志+环形缓冲+设备信息+OkHttp上传)+顶部公告栏(远程JSON+本地缓存+优先级三色+可关闭)+emoji全清除(Material图标替换)+Windows Desktop端(Compose Multiplatform可打包exe)+全平台代码上传GitHub"
+  "version": "2.9.3",
+  "versionCode": 52,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3/LiquidGlass-v2.9.3.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3/LiquidGlass-2.9.3.exe",
+  "releaseNotes": "v2.9.3 修复安装包升级问题 - 升级版本号修复jpackage相同版本号触发repair不替换文件+翻译中心(在线多源兜底+离线词典+会员体系+历史记录)+桌面适配工具集(计算器/倒计时/待办/记事本/密码生成器/单位换算)+Beta先锋UI优化(进度条+复制+持久化)+关于页折叠面板+侧边栏点击区域修复+首次启动桌面快捷方式询问"
 }

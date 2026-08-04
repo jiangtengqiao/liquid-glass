@@ -1,20 +1,17 @@
 {
-  "betaVersion": "2.9.2-beta.1",
-  "versionCode": 51,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2-beta.1/LiquidGlass-v2.9.2-beta.1.apk",
-  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2-beta.1/LiquidGlass-2.9.2-beta.1.exe",
-  "releaseNotes": "v2.9.2-beta.1 先锋内测版：主题大道至简（黑/白/系统自动）、Beta 先锋码系统、日志上传、公告栏、自动检查更新、Windows Desktop 端首发。",
+  "betaVersion": "2.9.3-beta.1",
+  "versionCode": 52,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3-beta.1/LiquidGlass-v2.9.3-beta.1.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.3-beta.1/LiquidGlass-2.9.3-beta.1.exe",
+  "releaseNotes": "v2.9.3-beta.1 先锋内测版：修复安装包升级问题（版本号升级避免repair不替换文件）+翻译中心+桌面适配工具集+首次启动桌面快捷方式询问。",
   "knownIssues": [
-    "Windows Desktop 端部分工具功能仍在移植中",
     "iOS 端需 Mac + Xcode 编译，无 ipa 直装包"
   ],
   "newFeatures": [
-    "Beta 先锋体验码申请系统（问卷+账户检测+17-25位不规则码）",
-    "用户日志上传系统（崩溃捕获+自动上传）",
-    "顶部公告栏系统（远程推送）",
-    "自动检查更新（启动静默+手动触发）",
-    "主题精简为黑/白/系统自动",
-    "Windows Desktop 端（Compose Multiplatform）",
-    "全代码 emoji 清除"
+    "修复安装包升级问题（jpackage相同版本号触发repair不替换文件）",
+    "翻译中心（在线多源兜底+离线词典+会员体系+历史记录）",
+    "桌面适配工具集（计算器/倒计时/待办/记事本/密码生成器/单位换算）",
+    "首次启动桌面快捷方式询问",
+    "Beta 先锋UI优化（进度条+复制+持久化）"
   ]
 }

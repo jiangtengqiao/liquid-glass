@@ -20,7 +20,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
 import androidx.compose.material.darkColors
 import androidx.compose.runtime.Composable
@@ -36,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
@@ -52,6 +56,7 @@ import com.liquidglass.desktop.ui.HomeScreen
 import com.liquidglass.desktop.ui.TranslationScreen
 import com.liquidglass.desktop.ui.tools.ToolScreen
 import com.liquidglass.desktop.ui.tools.ToolType
+import java.util.prefs.Preferences
 import kotlin.math.PI
 
 /** 侧边栏可导航的屏幕 */
@@ -101,6 +106,13 @@ fun App() {
 
     var currentScreen by remember { mutableStateOf(Screen.Home) }
     var selectedTool by remember { mutableStateOf<ToolType?>(null) }
+
+    // v2.9.3：首次启动询问是否创建桌面快捷方式
+    val shortcutPrefs = remember { Preferences.userNodeForPackage(ShortcutPrefs::class.java) }
+    var showShortcutDialog by remember {
+        mutableStateOf(!shortcutPrefs.getBoolean("shortcut_asked", false))
+    }
+    var shortcutResult by remember { mutableStateOf<String?>(null) }
 
     // 流体背景动画驱动时间
     val transition = rememberInfiniteTransition(label = "fluid")
@@ -166,6 +178,45 @@ fun App() {
                     }
                 }
             }
+
+            // v2.9.3：首次启动桌面快捷方式询问弹窗
+            if (showShortcutDialog) {
+                AlertDialog(
+                    onDismissRequest = {
+                        shortcutPrefs.putBoolean("shortcut_asked", true)
+                        showShortcutDialog = false
+                    },
+                    title = { Text("创建桌面快捷方式？") },
+                    text = {
+                        Column {
+                            Text("是否在桌面创建 LiquidGlass 的快捷方式，方便日常使用？")
+                            shortcutResult?.let {
+                                Spacer(Modifier.height(8.dp))
+                                Text(it, color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val exePath = ProcessHandle.current()
+                                .info().command().orElse("")
+                            val ok = if (exePath.isNotBlank()) {
+                                betaPioneerManager.createDesktopShortcut(exePath, "LiquidGlass")
+                            } else false
+                            shortcutResult = if (ok) "已创建桌面快捷方式" else "创建失败，可稍后在关于页手动创建"
+                            shortcutPrefs.putBoolean("shortcut_asked", true)
+                            shortcutPrefs.putBoolean("shortcut_created", ok)
+                            showShortcutDialog = false
+                        }) { Text("创建") }
+                    },
+                    dismissButton = {
+                        OutlinedButton(onClick = {
+                            shortcutPrefs.putBoolean("shortcut_asked", true)
+                            showShortcutDialog = false
+                        }) { Text("暂不") }
+                    }
+                )
+            }
         }
     }
 }
@@ -227,3 +278,6 @@ private val navItems: List<NavItem> = listOf(
     NavItem(Screen.About, "关于"),
     NavItem(Screen.BetaPioneer, "Beta 先锋")
 )
+
+/** 桌面快捷方式 Preferences 的命名空间标记 */
+private object ShortcutPrefs

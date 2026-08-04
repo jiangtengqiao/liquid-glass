@@ -18,6 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read version from version.json
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content version.json -Raw | ConvertFrom-Json)
+          Write-Host "version=$($v.version)"
+          echo "VERSION=$($v.version)" >> $env:GITHUB_OUTPUT
+
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
@@ -51,7 +59,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: LiquidGlass-Desktop-2.9.2
+          name: LiquidGlass-Desktop-${{ steps.ver.outputs.VERSION }}
           path: LiquidGlassDesktop/build/compose/binaries/main/exe/*
 
       - name: Upload exe to GitHub Release
@@ -59,6 +67,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.VERSION }}
         run: |
           $exePath = Get-ChildItem "LiquidGlassDesktop/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
           if (-not $exePath) {
@@ -66,8 +75,9 @@ jobs:
             exit 0
           }
           Write-Host "Uploading: $($exePath.FullName)"
-          # 确保 Release v2.9.2 存在（不存在则创建）
-          gh release create v2.9.2 --repo ${{ github.repository }} --title "v2.9.2 大道至简版" --notes "v2.9.2 大道至简版 - 主题精简+Beta先锋码+日志上传+公告栏+Windows Desktop端" --target main 2>$null
+          $tag = "v$env:VERSION"
+          # 确保 Release 存在（不存在则创建）
+          gh release create $tag --repo ${{ github.repository }} --title "$tag" --notes "Windows Desktop $tag - 翻译中心+桌面工具集+安装包升级修复" --target main 2>$null
           # 上传 exe 资产（如已存在同名资产会覆盖）
-          gh release upload v2.9.2 "$($exePath.FullName)" --repo ${{ github.repository }} --clobber
+          gh release upload $tag "$($exePath.FullName)" --repo ${{ github.repository }} --clobber
           Write-Host "Upload complete"
