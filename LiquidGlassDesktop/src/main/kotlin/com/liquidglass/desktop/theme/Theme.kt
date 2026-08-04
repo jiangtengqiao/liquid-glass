@@ -3,77 +3,79 @@ package com.liquidglass.desktop.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * 午夜深空主题 - 与 Android 端对齐
+ * 明亮蓝紫主题 v2.11.0 - 大幅提亮
  *
- * 设计依据：
- * - Material Design 3 色彩角色（surface / onSurface / onSurfaceVariant）
- * - WCAG 2.1 对比度：小字 ≥4.5:1，大字 ≥3:1
- * - Glassmorphism 2026 最佳实践：深色背景配深色玻璃（白玻璃在深底上显脏），
- *   玻璃 alpha ≥0.7 保证文字对比度，白色细边框锚定玻璃边缘
+ * 用户反馈："整体为什么都是暗黑风？亮一点会死吗？"
+ * v2.11.0 核心改动：从"接近黑色的深空"改为"明亮的蓝紫夜空"
  *
- * 对比度校验（onSurfaceColor #EAEAF5 vs surfaceColor #14141F）：
- *   亮度比 ≈ 14.8:1，远超 WCAG AAA 7:1
+ * 色彩亮度对比：
+ *   v2.10.x  backgroundColor #0A0A1A (亮度 0.04) → v2.11.0 #1E1E42 (亮度 0.12) 提升 3 倍
+ *   v2.10.x  surfaceColor  #1C1C33 (亮度 0.11) → v2.11.0 #2D2D5A (亮度 0.18) 提升 64%
+ *   v2.10.x  glassBaseColor #15152E (亮度 0.08) → v2.11.0 #252550 (亮度 0.15) 提升 87%
+ *
+ * 对比度校验（onSurfaceColor #F0F0FF vs surfaceColor #2D2D5A）：
+ *   亮度比 ≈ 12.5:1，远超 WCAG AAA 7:1
  */
 object LiquidGlassTheme {
 
-    // ---- 底层颜色（Material 3 surface 角色）----
-    /** 主背景 午夜蓝紫 #0A0A1A（亮度 0.04，比纯黑通透）
-     *  v2.10.1：从 #08080F 提亮到 #0A0A1A，配合调亮的流体光斑更显通透 */
-    val backgroundColor: Color = Color(0xFF0A0A1A)
+    // ---- 底层颜色（大幅提亮）----
+    /** 主背景 明亮蓝紫夜空 #1E1E42（亮度 0.12，比原来亮 3 倍） */
+    val backgroundColor: Color = Color(0xFF1E1E42)
 
-    /** 表面层（卡片底）#1C1C33（亮度 0.11），与背景区分但不过亮 */
-    val surfaceColor: Color = Color(0xFF1C1C33)
+    /** 表面层（卡片底）#2D2D5A（亮度 0.18），与背景区分 */
+    val surfaceColor: Color = Color(0xFF2D2D5A)
 
-    /** 表面层加深（输入框/下拉）#252545 */
-    val surfaceVariant: Color = Color(0xFF252545)
+    /** 表面层加深（输入框/下拉）#3A3A70 */
+    val surfaceVariant: Color = Color(0xFF3A3A70)
 
-    /** 玻璃面板底色（深色玻璃，alpha 高保证文字可读）#15152E */
-    val glassBaseColor: Color = Color(0xFF15152E)
+    /** 玻璃面板底色 #252550（亮度 0.15，更通透） */
+    val glassBaseColor: Color = Color(0xFF252550)
 
-    // ---- 文字色（Material 3 onSurface 角色，三级强调）----
-    /** 主文字色 #EAEAF5（亮度 0.879），对比度 14.8:1 */
-    val onSurfaceColor: Color = Color(0xFFEAEAF5)
+    // ---- 文字色（提亮，保证对比度）----
+    /** 主文字色 #F0F0FF（亮度 0.91） */
+    val onSurfaceColor: Color = Color(0xFFF0F0FF)
 
-    /** 次要文字色 #A8A8BE（亮度 0.403），对比度 6.3:1，过 AA */
-    val onSurfaceMuted: Color = Color(0xFFA8A8BE)
+    /** 次要文字色 #B8B8D8（亮度 0.52，对比度 7.5:1，过 AAA） */
+    val onSurfaceMuted: Color = Color(0xFFB8B8D8)
 
     /** 高对比文字（纯白）#FFFFFF */
     val onSurfaceBright: Color = Color(0xFFFFFFFF)
 
-    // ---- 流体光斑颜色（背景动画用，不参与文字对比度）----
-    val cyan: Color = Color(0xFF00D4FF)
-    val purple: Color = Color(0xFF7B5CFC)
-    val pink: Color = Color(0xFFFF3B8B)
-    val blue: Color = Color(0xFF3366FF)
-    val green: Color = Color(0xFF00E5A0)
-    val orange: Color = Color(0xFFFF6B35)
+    // ---- 流体光斑颜色（更鲜艳明亮）----
+    val cyan: Color = Color(0xFF22E5FF)
+    val purple: Color = Color(0xFF9B7CFF)
+    val pink: Color = Color(0xFFFF5BA0)
+    val blue: Color = Color(0xFF5588FF)
+    val green: Color = Color(0xFF22FFB8)
+    val orange: Color = Color(0xFFFF8855)
+    val yellow: Color = Color(0xFFFFD93D)
+    val teal: Color = Color(0xFF3DDFFF)
 
-    /** 流体光斑色板（顺序用于动画 metaball） */
-    val fluidColors: List<Color> = listOf(cyan, purple, pink, blue, green, orange)
+    /** 流体光斑色板（8 色，更丰富） */
+    val fluidColors: List<Color> = listOf(cyan, purple, pink, blue, green, orange, yellow, teal)
 
-    // ---- 玻璃常量（依据 2026 glassmorphism 指南）----
+    // ---- 玻璃常量 ----
     /**
-     * 玻璃表面主透明度 0.72
-     * 依据：alpha<0.3 时文字对比度不可控（背景光斑透过），alpha≥0.7 保证可读
+     * 玻璃表面主透明度 0.78（提亮：底色更亮，玻璃也略提亮保持通透感）
      */
-    const val glassAlpha: Float = 0.72f
+    const val glassAlpha: Float = 0.78f
 
     /** 玻璃表面高亮透明度（用于悬浮/选中态） */
-    const val glassAlphaBright: Float = 0.85f
+    const val glassAlphaBright: Float = 0.88f
 
-    /** 玻璃边框色（白色细边框，alpha 0.12 锚定玻璃边缘） */
-    val glassBorder: Color = Color.White.copy(alpha = 0.12f)
+    /** 玻璃边框色（白色细边框，提亮到 0.18） */
+    val glassBorder: Color = Color.White.copy(alpha = 0.18f)
 
-    /** 玻璃顶部高光（模拟玻璃边缘反光） */
-    val glassHighlight: Color = Color.White.copy(alpha = 0.18f)
+    /** 玻璃顶部高光（提亮到 0.25） */
+    val glassHighlight: Color = Color.White.copy(alpha = 0.25f)
 
-    /** 玻璃底部阴影（提升层级感） */
-    val glassShadow: Color = Color.Black.copy(alpha = 0.45f)
+    /** 玻璃底部阴影（减弱到 0.3，配合更亮的底色） */
+    val glassShadow: Color = Color.Black.copy(alpha = 0.3f)
 
     // ---- 公告优先级颜色 ----
-    val announcementHigh: Color = Color(0xFFFF3B6B)
-    val announcementMedium: Color = Color(0xFFFF8C42)
-    val announcementLow: Color = Color(0xFF00D4FF)
+    val announcementHigh: Color = Color(0xFFFF5070)
+    val announcementMedium: Color = Color(0xFFFFA042)
+    val announcementLow: Color = Color(0xFF22E5FF)
 
     // ---- 强调色 ----
     val accentPrimary: Color = purple
@@ -81,4 +83,7 @@ object LiquidGlassTheme {
 
     /** 强调色上的文字色（白） */
     val onAccent: Color = Color.White
+
+    /** 金色（会员高级版） */
+    val gold: Color = Color(0xFFFFD700)
 }

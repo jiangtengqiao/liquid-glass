@@ -18,7 +18,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.AlertDialog
@@ -47,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,25 +75,17 @@ import java.net.URL
 import javax.imageio.ImageIO
 
 /**
- * 音乐板块主屏幕。
+ * 音乐板块主屏幕（v2 - 彻底重做 UI）。
  *
- * 整合 20+ 功能，覆盖在线/本地/账号/播放全链路：
- *
- * 发现 Tab：
- *  1. 热搜词  2. 推荐歌单  3. 排行榜  4. 每日推荐  5. 新歌速递
- *  6. 新碟上架  7. 私人FM  8. DJ电台  9. MV推荐  10. 在线搜索
- *
- * 网易云 Tab：
- *  11. 二维码登录  12. 手机号验证码登录  13. 我的歌单  14. 歌单详情
- *
- * 本地 Tab：
- *  15. 目录选择  16. 本地音乐扫描  17. 本地音乐播放
- *
- * 播放栏：
- *  18. 播放/暂停/上一首/下一首  19. 进度条拖动  20. 音量调节
- *  21. 播放队列管理  22. 播放模式（顺序/单曲循环/随机）
- *  23. 歌词显示（逐字+逐行+翻译）  24. 音质切换  25. 睡眠定时
- *  26. 搜索历史
+ * 修复要点：
+ * 1. 点击歌曲时把整列表加入队列并从该歌开始播放（修复"没有加入队列"）
+ * 2. VIP/无 URL 歌曲自动跳下一首（修复"放不了歌"）
+ * 3. 搜索框带搜索历史下拉（修复"搜索歌一切都没有"）
+ * 4. 热搜词可点击触发搜索
+ * 5. 推荐歌单用横向卡片网格（修复"排版太恶心"）
+ * 6. 底部播放栏重新设计：封面+信息 | 控制 | 进度 | 音量+模式+队列+歌词
+ * 7. 队列抽屉：当前播放高亮，点击切换，可移除
+ * 8. 歌词抽屉：逐行高亮+翻译，自动滚动
  */
 @Composable
 fun MusicScreen() {
@@ -102,8 +98,8 @@ fun MusicScreen() {
     var currentSong by remember { mutableStateOf<Song?>(null) }
     var currentLyrics by remember { mutableStateOf<Lyrics?>(null) }
     val playMode = remember { mutableStateOf(PlayMode.SEQUENCE) }
-    var quality by remember { mutableStateOf("exhigh") }   // standard / exhigh / lossless / hires
-    var sleepTimerMs by remember { mutableLongStateOf(0L) } // 0=关闭，>0=剩余毫秒
+    var quality by remember { mutableStateOf("exhigh") }
+    var sleepTimerMs by remember { mutableLongStateOf(0L) }
 
     // 播放栏面板开关
     var showQueue by remember { mutableStateOf(false) }
@@ -117,8 +113,53 @@ fun MusicScreen() {
     var searchKeyword by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Song>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
+    var hasSearched by remember { mutableStateOf(false) }
+    var showSearchHistory by remember { mutableStateOf(false) }
+    val searchHistory = remember { mutableStateListOf<String>() }
 
-    // 启动播放一首歌：加入队列并从该位置开始
+    // 初始化搜索历史
+    LaunchedEffect(Unit) {
+        searchHistory.clear()
+        searchHistory.addAll(SearchHistoryStore.load())
+    }
+
+    // ============ 上一首/下一首（先定义，供 playSong 自动跳过使用）============
+    fun playPrev() {
+        if (queue.isEmpty()) return
+        val prev = if (currentIndex > 0) currentIndex - 1 else queue.size - 1
+        currentIndex = prev
+        currentSong = queue[prev]
+        currentLyrics = null
+        scope.launch {
+            val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
+            if (src.isNotBlank()) {
+                player.play(src, isLocal, currentSong!!.durationMs)
+                if (currentSong!!.source == Source.NETEASE) {
+                    launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                }
+            }
+        }
+    }
+
+    fun playNext() {
+        if (queue.isEmpty()) return
+        val next = if (currentIndex < queue.size - 1) currentIndex + 1 else 0
+        currentIndex = next
+        currentSong = queue[next]
+        currentLyrics = null
+        scope.launch {
+            val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
+            if (src.isNotBlank()) {
+                player.play(src, isLocal, currentSong!!.durationMs)
+                if (currentSong!!.source == Source.NETEASE) {
+                    launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                }
+            }
+        }
+    }
+
+    // ============ 核心：播放一首歌（带队列上下文）============
+    // 点击歌曲时，把整列表加入队列并从该歌开始播放
     fun playSong(song: Song, queueList: List<Song> = emptyList()) {
         val finalQueue = if (queueList.isEmpty()) listOf(song) else queueList
         queue.clear()
@@ -127,30 +168,50 @@ fun MusicScreen() {
         currentSong = song
         currentLyrics = null
 
-        // 决定播放源：本地直接 streamUrl；网易云需先取 URL
         scope.launch {
             val (src, isLocal) = resolvePlayableSource(song, quality)
             if (src.isBlank()) {
-                // 取 URL 失败：可能是 VIP 歌曲，直接跳下一首
+                // URL 为空（VIP / 下架 / 网络异常）：自动跳下一首
+                if (queue.size > 1) {
+                    delay(300)
+                    playNext()
+                }
                 return@launch
             }
             player.play(src, isLocal, song.durationMs)
             // 异步拉歌词（仅网易云）
             if (song.source == Source.NETEASE && song.id.isNotBlank()) {
-                launch {
-                    currentLyrics = NetEaseApi.lyrics(song.id)
-                }
+                launch { currentLyrics = NetEaseApi.lyrics(song.id) }
             }
         }
     }
 
-    // 播放完成回调：根据播放模式自动衔接
+    // 加入队列但不播放
+    fun addToQueue(song: Song) {
+        queue.add(song)
+    }
+
+    // 从队列移除
+    fun removeFromQueue(index: Int) {
+        if (index < 0 || index >= queue.size) return
+        queue.removeAt(index)
+        if (index < currentIndex) {
+            currentIndex--
+        } else if (index == currentIndex) {
+            // 移除的是当前播放：停止播放
+            player.stop()
+            currentSong = null
+            currentLyrics = null
+            currentIndex = -1
+        }
+    }
+
+    // ============ 自动衔接：播放完成回调 ============
     DisposableEffect(player) {
         player.onComplete = {
             scope.launch {
                 when (playMode.value) {
                     PlayMode.SINGLE -> {
-                        // 单曲循环：重播当前
                         currentSong?.let { s ->
                             val (src, isLocal) = resolvePlayableSource(s, quality)
                             if (src.isNotBlank()) {
@@ -164,9 +225,11 @@ fun MusicScreen() {
                             currentIndex = next
                             currentSong = queue[next]
                             val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
-                            if (src.isNotBlank()) player.play(src, isLocal, currentSong!!.durationMs)
-                            if (currentSong!!.source == Source.NETEASE) {
-                                launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                            if (src.isNotBlank()) {
+                                player.play(src, isLocal, currentSong!!.durationMs)
+                                if (currentSong!!.source == Source.NETEASE) {
+                                    launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                                }
                             }
                         }
                     }
@@ -179,9 +242,11 @@ fun MusicScreen() {
                             currentIndex = nextIdx
                             currentSong = queue[nextIdx]
                             val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
-                            if (src.isNotBlank()) player.play(src, isLocal, currentSong!!.durationMs)
-                            if (currentSong!!.source == Source.NETEASE) {
-                                launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                            if (src.isNotBlank()) {
+                                player.play(src, isLocal, currentSong!!.durationMs)
+                                if (currentSong!!.source == Source.NETEASE) {
+                                    launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                                }
                             }
                         }
                     }
@@ -198,157 +263,158 @@ fun MusicScreen() {
                 delay(1000L)
                 sleepTimerMs = (sleepTimerMs - 1000L).coerceAtLeast(0L)
             }
-            // 时间到，停止播放
             player.stop()
         }
     }
 
-    // 上一首/下一首
-    fun playPrev() {
-        if (queue.isEmpty()) return
-        val prev = if (currentIndex > 0) currentIndex - 1 else queue.size - 1
-        currentIndex = prev
-        currentSong = queue[prev]
+    // 搜索执行
+    fun doSearch(kw: String) {
+        val keyword = kw.trim()
+        if (keyword.isBlank()) return
+        searchKeyword = keyword
+        hasSearched = true
+        searching = true
+        showSearchHistory = false
         scope.launch {
-            val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
-            if (src.isNotBlank()) player.play(src, isLocal, currentSong!!.durationMs)
-            if (currentSong!!.source == Source.NETEASE) {
-                launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
-            }
-        }
-    }
-    fun playNext() {
-        if (queue.isEmpty()) return
-        val next = if (currentIndex < queue.size - 1) currentIndex + 1 else 0
-        currentIndex = next
-        currentSong = queue[next]
-        scope.launch {
-            val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
-            if (src.isNotBlank()) player.play(src, isLocal, currentSong!!.durationMs)
-            if (currentSong!!.source == Source.NETEASE) {
-                launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
-            }
+            val r = NetEaseApi.search(keyword, limit = 30)
+            searchResults = r.songs
+            searching = false
+            SearchHistoryStore.record(keyword)
+            searchHistory.clear()
+            searchHistory.addAll(SearchHistoryStore.load())
         }
     }
 
-    // 外层 Box：让 PlayerBar 的 align(BottomCenter) 和抽屉的 align 可用
+    // ============ 布局 ============
     Box(modifier = Modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize().padding(bottom = 96.dp)) {
-        // ===== 顶部：Tab + 搜索框 =====
-        MusicTopBar(
-            tab = tab,
-            onTabChange = { tab = it },
-            searchKeyword = searchKeyword,
-            onSearchChange = { searchKeyword = it },
-            onSearch = {
-                val kw = searchKeyword.trim()
-                if (kw.isBlank()) return@MusicTopBar
-                searching = true
-                scope.launch {
-                    val r = NetEaseApi.search(kw, limit = 30)
-                    searchResults = r.songs
-                    searching = false
-                    SearchHistoryStore.record(kw)
+        Column(modifier = Modifier.fillMaxSize().padding(bottom = 100.dp)) {
+            // ===== 顶部：Tab + 搜索框 =====
+            MusicTopBar(
+                tab = tab,
+                onTabChange = { tab = it },
+                searchKeyword = searchKeyword,
+                onSearchChange = {
+                    searchKeyword = it
+                    showSearchHistory = it.isEmpty()
+                },
+                onSearch = { doSearch(searchKeyword) },
+                searching = searching,
+                showHistory = showSearchHistory,
+                searchHistory = searchHistory,
+                onHistoryClick = { kw ->
+                    searchKeyword = kw
+                    doSearch(kw)
+                },
+                onClearHistory = {
+                    SearchHistoryStore.clear()
+                    searchHistory.clear()
                 }
-            },
-            searching = searching
-        )
+            )
 
-        // ===== 内容区 =====
-        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            when (tab) {
-                "discover" -> DiscoverTab(
-                    searchResults = searchResults,
-                    hasSearched = searchKeyword.isNotBlank() || searching,
-                    searching = searching,
-                    onPlaySong = { playSong(it) },
-                    onPlayAll = { list -> if (list.isNotEmpty()) playSong(list.first(), list) }
-                )
-                "netease" -> NetEaseTab(
-                    onPlaySong = { playSong(it) },
-                    onPlayAll = { list -> if (list.isNotEmpty()) playSong(list.first(), list) }
-                )
-                "local" -> LocalTab(
-                    onPlaySong = { playSong(it) },
-                    onPlayAll = { list -> if (list.isNotEmpty()) playSong(list.first(), list) }
-                )
+            // ===== 内容区 =====
+            Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                when (tab) {
+                    "discover" -> DiscoverTab(
+                        searchResults = searchResults,
+                        hasSearched = hasSearched,
+                        searching = searching,
+                        onPlaySong = { song, list -> playSong(song, list) },
+                        onAddToQueue = { addToQueue(it) },
+                        onSearchHot = { kw ->
+                            searchKeyword = kw
+                            doSearch(kw)
+                        }
+                    )
+                    "netease" -> NetEaseTab(
+                        onPlaySong = { song, list -> playSong(song, list) },
+                        onAddToQueue = { addToQueue(it) }
+                    )
+                    "local" -> LocalTab(
+                        onPlaySong = { song, list -> playSong(song, list) },
+                        onAddToQueue = { addToQueue(it) }
+                    )
+                }
             }
         }
-    }
 
-    // ===== 底部播放栏（固定悬浮） =====
-    PlayerBar(
-        player = player,
-        currentSong = currentSong,
-        currentLyrics = currentLyrics,
-        playMode = playMode.value,
-        quality = quality,
-        sleepTimerMs = sleepTimerMs,
-        onPlayPause = {
-            when (player.state) {
-                PlaybackController.State.PLAYING -> player.pause()
-                PlaybackController.State.PAUSED -> player.resume()
-                PlaybackController.State.IDLE, PlaybackController.State.ERROR -> {
-                    currentSong?.let { s ->
-                        scope.launch {
-                            val (src, isLocal) = resolvePlayableSource(s, quality)
-                            if (src.isNotBlank()) player.play(src, isLocal, s.durationMs)
+        // ===== 底部播放栏（固定悬浮）=====
+        PlayerBar(
+            player = player,
+            currentSong = currentSong,
+            playMode = playMode.value,
+            sleepTimerMs = sleepTimerMs,
+            queueSize = queue.size,
+            onPlayPause = {
+                when (player.state) {
+                    PlaybackController.State.PLAYING -> player.pause()
+                    PlaybackController.State.PAUSED -> player.resume()
+                    PlaybackController.State.IDLE, PlaybackController.State.ERROR -> {
+                        currentSong?.let { s ->
+                            scope.launch {
+                                val (src, isLocal) = resolvePlayableSource(s, quality)
+                                if (src.isNotBlank()) player.play(src, isLocal, s.durationMs)
+                            }
                         }
                     }
                 }
-            }
-        },
-        onPrev = ::playPrev,
-        onNext = ::playNext,
-        onSeek = { ms -> player.seekTo(ms) },
-        onVolumeChange = { v -> player.changeVolume(v) },
-        onToggleQueue = { showQueue = !showQueue; showLyrics = false; showSettings = false },
-        onToggleLyrics = { showLyrics = !showLyrics; showQueue = false; showSettings = false },
-        onToggleSettings = { showSettings = !showSettings; showQueue = false; showLyrics = false },
-        onModeChange = { playMode.value = it },
-        onQualityChange = { quality = it },
-        onSleepTimerChange = { sleepTimerMs = it },
-        modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
-    )
-
-    // ===== 抽屉：播放队列 / 歌词 / 设置 =====
-    if (showQueue) {
-        QueuePanel(
-            queue = queue,
-            currentIndex = currentIndex,
-            onSongClick = { idx ->
-                currentIndex = idx
-                currentSong = queue[idx]
-                scope.launch {
-                    val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
-                    if (src.isNotBlank()) player.play(src, isLocal, currentSong!!.durationMs)
-                }
             },
-            onClose = { showQueue = false }
-        )
-    }
-    if (showLyrics) {
-        LyricsPanel(
-            lyrics = currentLyrics,
-            positionMs = player.positionMs,
-            onClose = { showLyrics = false }
-        )
-    }
-    if (showSettings) {
-        SettingsPanel(
-            playMode = playMode.value,
-            quality = quality,
-            sleepTimerMs = sleepTimerMs,
+            onPrev = ::playPrev,
+            onNext = ::playNext,
+            onSeek = { ms -> player.seekTo(ms) },
+            onVolumeChange = { v -> player.changeVolume(v) },
+            onToggleQueue = { showQueue = !showQueue; showLyrics = false; showSettings = false },
+            onToggleLyrics = { showLyrics = !showLyrics; showQueue = false; showSettings = false },
+            onToggleSettings = { showSettings = !showSettings; showQueue = false; showLyrics = false },
             onModeChange = { playMode.value = it },
-            onQualityChange = { quality = it },
-            onSleepTimerChange = { sleepTimerMs = it },
-            onClose = { showSettings = false }
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
         )
+
+        // ===== 抽屉：播放队列 / 歌词 / 设置 =====
+        if (showQueue) {
+            QueuePanel(
+                queue = queue,
+                currentIndex = currentIndex,
+                onSongClick = { idx ->
+                    currentIndex = idx
+                    currentSong = queue[idx]
+                    currentLyrics = null
+                    scope.launch {
+                        val (src, isLocal) = resolvePlayableSource(currentSong!!, quality)
+                        if (src.isNotBlank()) {
+                            player.play(src, isLocal, currentSong!!.durationMs)
+                            if (currentSong!!.source == Source.NETEASE) {
+                                launch { currentLyrics = NetEaseApi.lyrics(currentSong!!.id) }
+                            }
+                        }
+                    }
+                },
+                onRemove = ::removeFromQueue,
+                onClose = { showQueue = false }
+            )
+        }
+        if (showLyrics) {
+            LyricsPanel(
+                lyrics = currentLyrics,
+                positionMs = player.positionMs,
+                song = currentSong,
+                onClose = { showLyrics = false }
+            )
+        }
+        if (showSettings) {
+            SettingsPanel(
+                playMode = playMode.value,
+                quality = quality,
+                sleepTimerMs = sleepTimerMs,
+                onModeChange = { playMode.value = it },
+                onQualityChange = { quality = it },
+                onSleepTimerChange = { sleepTimerMs = it },
+                onClose = { showSettings = false }
+            )
+        }
     }
-    } // Box 结束
 }
 
-// ==================== 顶部 Tab + 搜索框 ====================
+// ==================== 顶部 Tab + 搜索框 + 搜索历史 ====================
 
 @Composable
 private fun MusicTopBar(
@@ -357,87 +423,162 @@ private fun MusicTopBar(
     searchKeyword: String,
     onSearchChange: (String) -> Unit,
     onSearch: () -> Unit,
-    searching: Boolean
+    searching: Boolean,
+    showHistory: Boolean,
+    searchHistory: List<String>,
+    onHistoryClick: (String) -> Unit,
+    onClearHistory: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(16.dp)
     ) {
-        // Tab 切换
-        listOf("discover" to "发现", "netease" to "网易云", "local" to "本地").forEach { (id, label) ->
-            val selected = tab == id
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.35f)
-                        else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                    .clickable { onTabChange(id) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = label,
-                    color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-                )
-            }
-        }
-
-        Spacer(Modifier.width(16.dp))
-
-        // 搜索框
+        // 第一行：Tab + 搜索框
         Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.7f))
-                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("🔍", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
-            Spacer(Modifier.width(8.dp))
-            Box(modifier = Modifier.weight(1f)) {
-                if (searchKeyword.isEmpty()) {
+            // Tab 切换（玻璃态胶囊）
+            listOf("discover" to "🎵 发现", "netease" to "☁️ 网易云", "local" to "📁 本地").forEach { (id, label) ->
+                val selected = tab == id
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.4f)
+                            else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.6f)
+                            else LiquidGlassTheme.glassBorder,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .clickable { onTabChange(id) }
+                        .padding(horizontal = 18.dp, vertical = 9.dp)
+                ) {
                     Text(
-                        text = "搜索歌曲、歌手…",
-                        color = LiquidGlassTheme.onSurfaceMuted,
-                        fontSize = 14.sp
+                        text = label,
+                        color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted,
+                        fontSize = 14.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }
-                BasicTextField(
-                    value = searchKeyword,
-                    onValueChange = onSearchChange,
-                    textStyle = TextStyle(
-                        color = LiquidGlassTheme.onSurfaceColor,
-                        fontSize = 14.sp
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
+
+            Spacer(Modifier.width(12.dp))
+
+            // 搜索框（带历史下拉）
+            Box(modifier = Modifier.weight(1f)) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.7f))
+                            .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🔍", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (searchKeyword.isEmpty()) {
+                                Text(
+                                    text = "搜索歌曲、歌手、专辑…",
+                                    color = LiquidGlassTheme.onSurfaceMuted,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            BasicTextField(
+                                value = searchKeyword,
+                                onValueChange = onSearchChange,
+                                textStyle = TextStyle(
+                                    color = LiquidGlassTheme.onSurfaceColor,
+                                    fontSize = 14.sp
+                                ),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        if (searching) {
+                            Text("⏳", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+                        } else if (searchKeyword.isNotEmpty()) {
+                            Text(
+                                "✕",
+                                color = LiquidGlassTheme.onSurfaceMuted,
+                                fontSize = 14.sp,
+                                modifier = Modifier.clickable { onSearchChange("") }
+                            )
+                        }
+                    }
+
+                    // 搜索历史下拉
+                    if (showHistory && searchHistory.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.95f))
+                                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(10.dp))
+                                .padding(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "搜索历史",
+                                    color = LiquidGlassTheme.onSurfaceMuted,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    "清空",
+                                    color = LiquidGlassTheme.announcementMedium,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.clickable { onClearHistory() }
+                                )
+                            }
+                            searchHistory.forEach { kw ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { onHistoryClick(kw) }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🕐", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 11.sp)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        kw,
+                                        color = LiquidGlassTheme.onSurfaceColor,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.width(8.dp))
-            if (searching) {
-                Text("...", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
-            } else if (searchKeyword.isNotEmpty()) {
-                Text(
-                    "✕",
-                    color = LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 14.sp,
-                    modifier = Modifier.clickable { onSearchChange("") }
-                )
+
+            Button(
+                onClick = onSearch,
+                enabled = !searching && searchKeyword.isNotBlank(),
+                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+            ) {
+                Text("搜索")
             }
-        }
-
-        Spacer(Modifier.width(8.dp))
-
-        Button(onClick = onSearch, enabled = !searching) {
-            Text("搜索")
         }
     }
 }
@@ -449,12 +590,10 @@ private fun DiscoverTab(
     searchResults: List<Song>,
     hasSearched: Boolean,
     searching: Boolean,
-    onPlaySong: (Song) -> Unit,
-    onPlayAll: (List<Song>) -> Unit
+    onPlaySong: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+    onSearchHot: (String) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-
-    // 9 个发现模块的数据
     var hotWords by remember { mutableStateOf<List<String>>(emptyList()) }
     var recommendPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
     var toplists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
@@ -462,10 +601,8 @@ private fun DiscoverTab(
     var newSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     var newAlbums by remember { mutableStateOf<List<NetEaseApi.AlbumInfo>>(emptyList()) }
     var personalFm by remember { mutableStateOf<List<Song>>(emptyList()) }
-    var djRadios by remember { mutableStateOf<List<NetEaseApi.DjProgram>>(emptyList()) }
     var mvs by remember { mutableStateOf<List<NetEaseApi.MvInfo>>(emptyList()) }
 
-    // 加载状态：true 表示正在加载中
     var loading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var retryKey by remember { mutableStateOf(0) }
@@ -483,7 +620,6 @@ private fun DiscoverTab(
                 launch { newSongs = NetEaseApi.newSongs(0) }
                 launch { newAlbums = NetEaseApi.newAlbums() }
                 launch { personalFm = NetEaseApi.personalFm() }
-                launch { djRadios = NetEaseApi.recommendDj() }
                 launch { mvs = NetEaseApi.recommendMv() }
             }
         } catch (e: Exception) {
@@ -495,241 +631,167 @@ private fun DiscoverTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         // 搜索结果优先显示
-        if (hasSearched && searchResults.isNotEmpty()) {
+        if (hasSearched) {
             item {
                 SectionHeader(
                     title = "搜索结果（${searchResults.size} 首）",
-                    actionText = "播放全部",
-                    onAction = { onPlayAll(searchResults) }
+                    actionText = if (searchResults.isNotEmpty()) "播放全部" else null,
+                    onAction = if (searchResults.isNotEmpty()) {
+                        { onPlaySong(searchResults.first(), searchResults) }
+                    } else null
                 )
             }
-            items(searchResults) { song ->
-                SongRow(song = song, onPlay = { onPlaySong(song) })
-            }
-        } else if (hasSearched && !searching) {
-            item { EmptyState("没有找到相关歌曲") }
-        } else if (searching) {
-            item { EmptyState("搜索中…") }
-        } else if (loading) {
-            // 加载中：显示骨架/加载提示
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        androidx.compose.material.CircularProgressIndicator(
-                            color = LiquidGlassTheme.accentSecondary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "正在加载音乐数据...",
-                            color = LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 13.sp
-                        )
-                    }
+            when {
+                searching -> item { LoadingState("搜索中…") }
+                searchResults.isEmpty() -> item { EmptyState("没有找到相关歌曲\n试试其他关键词") }
+                else -> items(searchResults) { song ->
+                    SongRow(
+                        song = song,
+                        onPlay = { onPlaySong(song, searchResults) },
+                        onAddToQueue = { onAddToQueue(song) }
+                    )
                 }
             }
+        } else if (loading) {
+            item { LoadingState("正在加载音乐数据…") }
         } else if (loadError != null) {
             item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "加载失败",
-                            color = LiquidGlassTheme.announcementHigh,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            loadError!!,
-                            color = LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 12.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        androidx.compose.material.OutlinedButton(
-                            onClick = {
-                                // 通过 retryKey 自增触发 LaunchedEffect 重新加载
-                                retryKey++
-                            }
-                        ) { Text("重试") }
-                    }
-                }
+                ErrorState(
+                    message = loadError!!,
+                    onRetry = { retryKey++ }
+                )
             }
         } else if (hotWords.isEmpty() && recommendPlaylists.isEmpty() &&
             toplists.isEmpty() && dailyRecommend.isEmpty() && newSongs.isEmpty()) {
-            // 全部加载完但都是空（可能是网络异常导致全部接口失败）
             item {
-                EmptyState("暂时无法获取音乐数据\n请检查网络连接或稍后重试")
-            }
-        }
-
-        // 热搜词
-        if (hotWords.isNotEmpty()) {
-            item {
-                SectionHeader(title = "🔥 热搜榜")
-                FlowChips(
-                    items = hotWords.take(15),
-                    onClick = { /* 搜索热词需要外部触发；这里点击无操作，避免循环依赖 */ }
+                ErrorState(
+                    message = "暂时无法获取音乐数据\n请检查网络连接或稍后重试",
+                    onRetry = { retryKey++ }
                 )
             }
-        }
+        } else {
+            // 热搜词
+            if (hotWords.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "🔥 热搜榜")
+                    FlowChips(items = hotWords.take(15), onClick = onSearchHot)
+                }
+            }
 
-        // 每日推荐
-        if (dailyRecommend.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = "📅 每日推荐",
-                    actionText = "播放全部",
-                    onAction = { onPlayAll(dailyRecommend) }
-                )
-            }
-            items(dailyRecommend.take(10)) { song ->
-                SongRow(song = song, onPlay = { onPlaySong(song) })
-            }
-        }
-
-        // 推荐歌单
-        if (recommendPlaylists.isNotEmpty()) {
-            item { SectionHeader(title = "🎵 推荐歌单") }
-            items(recommendPlaylists) { pl ->
-                PlaylistRow(playlist = pl)
-            }
-        }
-
-        // 排行榜
-        if (toplists.isNotEmpty()) {
-            item { SectionHeader(title = "🏆 排行榜") }
-            items(toplists.take(10)) { pl ->
-                PlaylistRow(playlist = pl)
-            }
-        }
-
-        // 新歌速递
-        if (newSongs.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = "🆕 新歌速递",
-                    actionText = "播放全部",
-                    onAction = { onPlayAll(newSongs) }
-                )
-            }
-            items(newSongs.take(10)) { song ->
-                SongRow(song = song, onPlay = { onPlaySong(song) })
-            }
-        }
-
-        // 私人 FM
-        if (personalFm.isNotEmpty()) {
-            item {
-                SectionHeader(
-                    title = "📡 私人 FM",
-                    actionText = "播放全部",
-                    onAction = { onPlayAll(personalFm) }
-                )
-            }
-            items(personalFm.take(10)) { song ->
-                SongRow(song = song, onPlay = { onPlaySong(song) })
-            }
-        }
-
-        // 新碟上架
-        if (newAlbums.isNotEmpty()) {
-            item { SectionHeader(title = "💿 新碟上架") }
-            items(newAlbums) { album ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.5f))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("💿", fontSize = 24.sp)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            album.name,
-                            color = LiquidGlassTheme.onSurfaceColor,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            "${album.artist} · ${album.publishDate}",
-                            color = LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 12.sp
-                        )
+            // 推荐歌单（横向卡片网格）
+            if (recommendPlaylists.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "🎵 推荐歌单")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(recommendPlaylists) { pl ->
+                            PlaylistCard(playlist = pl)
+                        }
                     }
                 }
             }
-        }
 
-        // DJ 电台
-        if (djRadios.isNotEmpty()) {
-            item { SectionHeader(title = "🎙️ DJ 电台") }
-            items(djRadios) { dj ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.5f))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("🎙️", fontSize = 24.sp)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            dj.name,
-                            color = LiquidGlassTheme.onSurfaceColor,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            "${dj.djName} · ${dj.listenerCount} 听众",
-                            color = LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 12.sp
-                        )
+            // 每日推荐
+            if (dailyRecommend.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "📅 每日推荐",
+                        actionText = "播放全部",
+                        onAction = { onPlaySong(dailyRecommend.first(), dailyRecommend) }
+                    )
+                }
+                items(dailyRecommend.take(10)) { song ->
+                    SongRow(
+                        song = song,
+                        onPlay = { onPlaySong(song, dailyRecommend) },
+                        onAddToQueue = { onAddToQueue(song) }
+                    )
+                }
+            }
+
+            // 排行榜（横向卡片）
+            if (toplists.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "🏆 排行榜")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(toplists.take(10)) { pl ->
+                            PlaylistCard(playlist = pl)
+                        }
                     }
                 }
             }
-        }
 
-        // MV 推荐
-        if (mvs.isNotEmpty()) {
-            item { SectionHeader(title = "📺 MV 推荐") }
-            items(mvs) { mv ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.5f))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("📺", fontSize = 24.sp)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            mv.name,
-                            color = LiquidGlassTheme.onSurfaceColor,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            "${mv.artist} · ${mv.playCount} 次播放",
-                            color = LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 12.sp
-                        )
+            // 新歌速递
+            if (newSongs.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "🆕 新歌速递",
+                        actionText = "播放全部",
+                        onAction = { onPlaySong(newSongs.first(), newSongs) }
+                    )
+                }
+                items(newSongs.take(10)) { song ->
+                    SongRow(
+                        song = song,
+                        onPlay = { onPlaySong(song, newSongs) },
+                        onAddToQueue = { onAddToQueue(song) }
+                    )
+                }
+            }
+
+            // 私人 FM
+            if (personalFm.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        title = "📡 私人 FM",
+                        actionText = "播放全部",
+                        onAction = { onPlaySong(personalFm.first(), personalFm) }
+                    )
+                }
+                items(personalFm.take(10)) { song ->
+                    SongRow(
+                        song = song,
+                        onPlay = { onPlaySong(song, personalFm) },
+                        onAddToQueue = { onAddToQueue(song) }
+                    )
+                }
+            }
+
+            // 新碟上架（横向卡片）
+            if (newAlbums.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "💿 新碟上架")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(newAlbums) { album ->
+                            AlbumCard(album = album)
+                        }
+                    }
+                }
+            }
+
+            // MV 推荐（横向卡片）
+            if (mvs.isNotEmpty()) {
+                item {
+                    SectionHeader(title = "📺 MV 推荐")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        items(mvs) { mv ->
+                            MvCard(mv = mv)
+                        }
                     }
                 }
             }
@@ -741,8 +803,8 @@ private fun DiscoverTab(
 
 @Composable
 private fun NetEaseTab(
-    onPlaySong: (Song) -> Unit,
-    onPlayAll: (List<Song>) -> Unit
+    onPlaySong: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var userAccount by remember { mutableStateOf<UserAccount?>(null) }
@@ -769,21 +831,34 @@ private fun NetEaseTab(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         // 用户信息卡
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.6f))
-                    .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.7f))
+                    .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(14.dp))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (userAccount != null) {
-                    Text("👤", fontSize = 36.sp)
+                    // 头像
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(LiquidGlassTheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (userAccount!!.avatarUrl.isNotBlank()) {
+                            CoverArt(url = userAccount!!.avatarUrl, size = 48.dp, shape = CircleShape)
+                        } else {
+                            Text("👤", fontSize = 24.sp)
+                        }
+                    }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -791,7 +866,9 @@ private fun NetEaseTab(
                                 userAccount!!.nickname,
                                 color = LiquidGlassTheme.onSurfaceColor,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             if (userAccount!!.isVip) {
                                 Spacer(Modifier.width(6.dp))
@@ -803,7 +880,7 @@ private fun NetEaseTab(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(LiquidGlassTheme.orange)
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
                                 )
                             }
                         }
@@ -813,15 +890,24 @@ private fun NetEaseTab(
                             fontSize = 12.sp
                         )
                     }
-                    OutlinedButton(onClick = {
-                        NetEaseAuth.logout()
-                        userAccount = null
-                        myPlaylists = emptyList()
-                        selectedPlaylist = null
-                        playlistTracks = emptyList()
-                    }) { Text("退出") }
+                    OutlinedButton(
+                        onClick = {
+                            NetEaseAuth.logout()
+                            userAccount = null
+                            myPlaylists = emptyList()
+                            selectedPlaylist = null
+                            playlistTracks = emptyList()
+                        },
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    ) { Text("退出") }
                 } else {
-                    Text("🔐", fontSize = 36.sp)
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(LiquidGlassTheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) { Text("🔐", fontSize = 24.sp) }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -836,7 +922,10 @@ private fun NetEaseTab(
                             fontSize = 12.sp
                         )
                     }
-                    Button(onClick = { showLoginDialog = true }) { Text("登录") }
+                    Button(
+                        onClick = { showLoginDialog = true },
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                    ) { Text("登录") }
                 }
             }
         }
@@ -869,7 +958,7 @@ private fun NetEaseTab(
                 }
             } else {
                 if (loadingTracks) {
-                    item { EmptyState("加载曲目中…") }
+                    item { LoadingState("加载曲目中…") }
                 } else if (playlistTracks.isEmpty()) {
                     item { EmptyState("歌单为空") }
                 } else {
@@ -877,11 +966,15 @@ private fun NetEaseTab(
                         SectionHeader(
                             title = "🎵 ${selectedPlaylist!!.name}（${playlistTracks.size}）",
                             actionText = "播放全部",
-                            onAction = { onPlayAll(playlistTracks) }
+                            onAction = { onPlaySong(playlistTracks.first(), playlistTracks) }
                         )
                     }
                     items(playlistTracks) { song ->
-                        SongRow(song = song, onPlay = { onPlaySong(song) })
+                        SongRow(
+                            song = song,
+                            onPlay = { onPlaySong(song, playlistTracks) },
+                            onAddToQueue = { onAddToQueue(song) }
+                        )
                     }
                 }
             }
@@ -908,8 +1001,8 @@ private fun NetEaseTab(
 
 @Composable
 private fun LocalTab(
-    onPlaySong: (Song) -> Unit,
-    onPlayAll: (List<Song>) -> Unit
+    onPlaySong: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var localSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
@@ -920,15 +1013,16 @@ private fun LocalTab(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
+        // 扫描目录选择卡
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.6f))
-                    .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.7f))
+                    .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(14.dp))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -948,18 +1042,21 @@ private fun LocalTab(
                     )
                 }
                 Spacer(Modifier.width(8.dp))
-                OutlinedButton(onClick = {
-                    scope.launch {
-                        withContext(Dispatchers.IO) {
-                            val chooser = javax.swing.JFileChooser(scanDir)
-                            chooser.fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
-                            chooser.dialogTitle = "选择音乐目录"
-                            if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
-                                scanDir = chooser.selectedFile.absolutePath
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                val chooser = javax.swing.JFileChooser(scanDir)
+                                chooser.fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+                                chooser.dialogTitle = "选择音乐目录"
+                                if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                                    scanDir = chooser.selectedFile.absolutePath
+                                }
                             }
                         }
-                    }
-                }) { Text("选择") }
+                    },
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                ) { Text("选择") }
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = {
@@ -974,32 +1071,50 @@ private fun LocalTab(
                             scanning = false
                         }
                     },
-                    enabled = !scanning
+                    enabled = !scanning,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
                 ) { Text(if (scanning) "扫描中…" else "扫描") }
             }
         }
 
+        // 扫描进度
         scanProgress?.let { p ->
             item {
-                Text(
-                    "已扫描 ${p.scanned} 个文件，找到 ${p.found} 首音乐",
-                    color = LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("📊", color = LiquidGlassTheme.accentSecondary, fontSize = 14.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "已扫描 ${p.scanned} 个文件，找到 ${p.found} 首音乐",
+                        color = LiquidGlassTheme.onSurfaceMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 
+        // 本地歌曲列表
         if (localSongs.isNotEmpty()) {
             item {
                 SectionHeader(
                     title = "🎵 本地音乐（${localSongs.size}）",
                     actionText = "播放全部",
-                    onAction = { onPlayAll(localSongs) }
+                    onAction = { onPlaySong(localSongs.first(), localSongs) }
                 )
             }
             items(localSongs) { song ->
-                SongRow(song = song, onPlay = { onPlaySong(song) })
+                SongRow(
+                    song = song,
+                    onPlay = { onPlaySong(song, localSongs) },
+                    onAddToQueue = { onAddToQueue(song) }
+                )
             }
         } else if (!scanning) {
             item { EmptyState("点击「扫描」按钮添加本地音乐\n支持 MP3 格式") }
@@ -1007,16 +1122,15 @@ private fun LocalTab(
     }
 }
 
-// ==================== 播放栏 ====================
+// ==================== 底部播放栏（重新设计）====================
 
 @Composable
 private fun PlayerBar(
     player: PlaybackController,
     currentSong: Song?,
-    currentLyrics: Lyrics?,
     playMode: PlayMode,
-    quality: String,
     sleepTimerMs: Long,
+    queueSize: Int,
     onPlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -1026,26 +1140,25 @@ private fun PlayerBar(
     onToggleLyrics: () -> Unit,
     onToggleSettings: () -> Unit,
     onModeChange: (PlayMode) -> Unit,
-    onQualityChange: (String) -> Unit,
-    onSleepTimerChange: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var seekingMs by remember { mutableStateOf<Long?>(null) }
+    var volSlider by remember { mutableStateOf(player.volume) }
 
     Row(
         modifier = modifier
-            .height(96.dp)
+            .height(100.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(LiquidGlassTheme.glassBaseColor.copy(alpha = LiquidGlassTheme.glassAlphaBright))
-            .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp),
+            .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(18.dp))
+            .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 封面 + 标题
-        CoverArt(url = currentSong?.coverUrl, size = 56.dp)
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.width(220.dp)) {
+        // ===== 左：封面 + 标题 + 艺术家 =====
+        CoverArt(url = currentSong?.coverUrl, size = 60.dp, shape = RoundedCornerShape(10.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.width(200.dp)) {
             Text(
                 currentSong?.title ?: "未播放",
                 color = LiquidGlassTheme.onSurfaceColor,
@@ -1054,6 +1167,7 @@ private fun PlayerBar(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 currentSong?.artist?.ifBlank { "未知艺术家" } ?: "—",
                 color = LiquidGlassTheme.onSurfaceMuted,
@@ -1062,29 +1176,33 @@ private fun PlayerBar(
                 overflow = TextOverflow.Ellipsis
             )
             if (currentSong?.isVipOnly == true) {
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    "VIP 专享",
+                    "VIP 专享 · 可能无法播放",
                     color = LiquidGlassTheme.announcementHigh,
                     fontSize = 10.sp
                 )
             }
         }
 
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(20.dp))
 
-        // 中间：控制按钮 + 进度条
+        // ===== 中：控制按钮 + 进度条 =====
         Column(modifier = Modifier.weight(1f)) {
+            // 控制按钮行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 播放模式
+                // 播放模式（点击切换）
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { onToggleSettings() }
-                        .padding(4.dp)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { onModeChange(nextPlayMode(playMode)) }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         when (playMode) {
@@ -1096,23 +1214,28 @@ private fun PlayerBar(
                         fontSize = 16.sp
                     )
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(16.dp))
 
                 // 上一首
-                Text(
-                    "⏮",
-                    color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 20.sp,
-                    modifier = Modifier.clickable { onPrev() }.padding(4.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-
-                // 播放/暂停
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onPrev() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⏮", color = LiquidGlassTheme.onSurfaceColor, fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(16.dp))
+
+                // 播放/暂停（大圆形按钮）
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
                         .background(LiquidGlassTheme.accentPrimary)
+                        .border(1.dp, LiquidGlassTheme.glassHighlight, CircleShape)
                         .clickable { onPlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1126,46 +1249,54 @@ private fun PlayerBar(
                         fontSize = 18.sp
                     )
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(16.dp))
 
                 // 下一首
-                Text(
-                    "⏭",
-                    color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 20.sp,
-                    modifier = Modifier.clickable { onNext() }.padding(4.dp)
-                )
-                Spacer(Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onNext() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⏭", color = LiquidGlassTheme.onSurfaceColor, fontSize = 18.sp)
+                }
+                Spacer(Modifier.width(16.dp))
 
                 // 队列
-                Text(
-                    "☰",
-                    color = LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 16.sp,
-                    modifier = Modifier.clickable { onToggleQueue() }.padding(4.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { onToggleQueue() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("☰", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 16.sp)
+                }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            // 进度条
+            // 进度条（可拖动）
             val position = seekingMs ?: player.positionMs
             val duration = player.durationMs.coerceAtLeast(0L)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     formatMs(position),
                     color = LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    modifier = Modifier.width(40.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(LiquidGlassTheme.surfaceVariant)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f))
                         .pointerInput(duration) {
-                            // 拖动进度
                             awaitPointerEventScope {
                                 while (true) {
                                     val event = awaitPointerEvent()
@@ -1173,8 +1304,9 @@ private fun PlayerBar(
                                     val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
                                     if (event.type == PointerEventType.Press ||
                                         (event.type == PointerEventType.Move && change.pressed)) {
-                                        val targetMs = (ratio * duration).toLong()
-                                        seekingMs = targetMs
+                                        if (duration > 0) {
+                                            seekingMs = (ratio * duration).toLong()
+                                        }
                                     }
                                     if (event.type == PointerEventType.Release && seekingMs != null) {
                                         onSeek(seekingMs!!)
@@ -1189,7 +1321,7 @@ private fun PlayerBar(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(progress)
-                            .clip(RoundedCornerShape(2.dp))
+                            .clip(RoundedCornerShape(3.dp))
                             .background(LiquidGlassTheme.accentSecondary)
                     )
                 }
@@ -1197,25 +1329,25 @@ private fun PlayerBar(
                 Text(
                     formatMs(duration),
                     color = LiquidGlassTheme.onSurfaceMuted,
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    modifier = Modifier.width(40.dp)
                 )
             }
         }
 
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(20.dp))
 
-        // 右侧：歌词/设置/音量
+        // ===== 右：音量 + 歌词 + 设置 =====
         Row(verticalAlignment = Alignment.CenterVertically) {
             // 音量
-            var volSlider by remember { mutableStateOf(player.volume) }
             Text("🔊", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(6.dp))
             Box(
                 modifier = Modifier
                     .width(80.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(LiquidGlassTheme.surfaceVariant)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f))
                     .pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
@@ -1235,37 +1367,57 @@ private fun PlayerBar(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(volSlider)
-                        .clip(RoundedCornerShape(2.dp))
+                        .clip(RoundedCornerShape(3.dp))
                         .background(LiquidGlassTheme.accentSecondary)
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(16.dp))
 
             // 歌词
-            Text(
-                "词",
-                color = LiquidGlassTheme.onSurfaceMuted,
-                fontSize = 14.sp,
-                modifier = Modifier.clickable { onToggleLyrics() }.padding(4.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .clickable { onToggleLyrics() }
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("词", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 13.sp)
+            }
+
             Spacer(Modifier.width(8.dp))
 
-            // 设置（音质/模式/定时）
-            Text(
-                "⚙",
-                color = LiquidGlassTheme.onSurfaceMuted,
-                fontSize = 16.sp,
-                modifier = Modifier.clickable { onToggleSettings() }.padding(4.dp)
-            )
+            // 设置
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .clickable { onToggleSettings() }
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("⚙", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 16.sp)
+            }
 
             // 睡眠定时指示
             if (sleepTimerMs > 0L) {
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "⏰ ${formatMs(sleepTimerMs)}",
+                    "⏰${formatMs(sleepTimerMs)}",
                     color = LiquidGlassTheme.announcementMedium,
-                    fontSize = 11.sp
+                    fontSize = 10.sp
+                )
+            }
+
+            // 队列数量
+            if (queueSize > 0) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "$queueSize",
+                    color = LiquidGlassTheme.accentSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -1279,62 +1431,108 @@ private fun QueuePanel(
     queue: List<Song>,
     currentIndex: Int,
     onSongClick: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
     onClose: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .background(Color.Black.copy(alpha = 0.5f))
             .clickable(onClick = onClose)
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .width(380.dp)
-                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.95f))
+                .width(400.dp)
+                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.97f))
                 .border(1.dp, LiquidGlassTheme.glassBorder)
-                .padding(16.dp)
-                .clickable(enabled = false) { /* 拦截点击 */ }
+                .padding(20.dp)
+                .clickable(enabled = false) { }
         ) {
+            // 标题栏
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "播放队列（${queue.size}）",
+                    "播放队列",
                     color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    "✕",
+                    "${queue.size} 首",
                     color = LiquidGlassTheme.onSurfaceMuted,
-                    modifier = Modifier.clickable { onClose() }
+                    fontSize = 13.sp
                 )
+                Spacer(Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onClose() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✕", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
+                }
             }
-            Spacer(Modifier.height(12.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                items(queue.size) { idx ->
-                    val song = queue[idx]
+            Spacer(Modifier.height(16.dp))
+
+            // 队列列表
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                itemsIndexed(queue) { idx, song ->
                     val playing = idx == currentIndex
+                    var hovered by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (playing) LiquidGlassTheme.accentPrimary.copy(alpha = 0.3f)
-                                else Color.Transparent
+                                when {
+                                    playing -> LiquidGlassTheme.accentPrimary.copy(alpha = 0.3f)
+                                    hovered -> LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                                    else -> Color.Transparent
+                                }
                             )
                             .clickable { onSongClick(idx) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val e = awaitPointerEvent()
+                                        when (e.type) {
+                                            PointerEventType.Enter -> hovered = true
+                                            PointerEventType.Exit -> hovered = false
+                                            else -> {}
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "${idx + 1}",
-                            color = if (playing) LiquidGlassTheme.accentSecondary
-                            else LiquidGlassTheme.onSurfaceMuted,
-                            fontSize = 12.sp,
-                            modifier = Modifier.width(28.dp)
-                        )
+                        // 序号或播放指示
+                        Box(
+                            modifier = Modifier.width(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (playing) {
+                                Text("▶", color = LiquidGlassTheme.accentSecondary, fontSize = 12.sp)
+                            } else {
+                                Text(
+                                    "${idx + 1}",
+                                    color = LiquidGlassTheme.onSurfaceMuted,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        // 封面
+                        CoverArt(url = song.coverUrl, size = 36.dp, shape = RoundedCornerShape(6.dp))
+                        Spacer(Modifier.width(10.dp))
+                        // 标题+艺术家
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 song.title,
@@ -1342,18 +1540,48 @@ private fun QueuePanel(
                                 else LiquidGlassTheme.onSurfaceColor,
                                 fontSize = 13.sp,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = if (playing) FontWeight.SemiBold else FontWeight.Normal
                             )
                             Text(
-                                song.artist.ifBlank { "未知" },
+                                song.artist.ifBlank { "未知艺术家" },
                                 color = LiquidGlassTheme.onSurfaceMuted,
                                 fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        if (playing) {
-                            Text("▶", color = LiquidGlassTheme.accentSecondary, fontSize = 12.sp)
+                        Spacer(Modifier.width(8.dp))
+                        // VIP 标签
+                        if (song.isVipOnly) {
+                            Text(
+                                "VIP",
+                                color = LiquidGlassTheme.announcementHigh,
+                                fontSize = 9.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(LiquidGlassTheme.announcementHigh.copy(alpha = 0.2f))
+                                    .padding(horizontal = 3.dp, vertical = 1.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        // 时长
+                        Text(
+                            formatMs(song.durationMs),
+                            color = LiquidGlassTheme.onSurfaceMuted,
+                            fontSize = 11.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        // 移除按钮
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .clickable { onRemove(idx) }
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("✕", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 11.sp)
                         }
                     }
                 }
@@ -1368,45 +1596,64 @@ private fun QueuePanel(
 private fun LyricsPanel(
     lyrics: Lyrics?,
     positionMs: Long,
+    song: Song?,
     onClose: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .background(Color.Black.copy(alpha = 0.5f))
             .clickable(onClick = onClose)
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .fillMaxWidth(0.6f)
-                .height(500.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.95f))
-                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(16.dp))
-                .padding(24.dp)
+                .fillMaxWidth(0.65f)
+                .height(560.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.97f))
+                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(18.dp))
+                .padding(28.dp)
                 .clickable(enabled = false) { }
         ) {
+            // 标题栏
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "歌词",
-                    color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    "✕",
-                    color = LiquidGlassTheme.onSurfaceMuted,
-                    modifier = Modifier.clickable { onClose() }
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        song?.title ?: "歌词",
+                        color = LiquidGlassTheme.onSurfaceColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (song != null) {
+                        Text(
+                            song.artist.ifBlank { "未知艺术家" },
+                            color = LiquidGlassTheme.onSurfaceMuted,
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onClose() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✕", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
+                }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             if (lyrics == null || (lyrics.lrcLines.isEmpty() && lyrics.yrcLines.isEmpty())) {
-                EmptyState("暂无歌词")
+                EmptyState("暂无歌词\n可能是纯音乐或歌词尚未收录")
             } else {
-                // 把 yrc / lrc 统一成显示项，避免丑陋的类型转换
+                // 统一歌词显示项
                 val displayLines = remember(lyrics) {
                     if (lyrics.hasYrc) {
                         lyrics.yrcLines.map {
@@ -1435,27 +1682,42 @@ private fun LyricsPanel(
                         ans
                     }
                 }
+                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                // 自动滚动到当前歌词
+                LaunchedEffect(currentIdx) {
+                    if (displayLines.isNotEmpty() && currentIdx in displayLines.indices) {
+                        listState.animateScrollToItem(currentIdx)
+                    }
+                }
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 200.dp)
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 220.dp),
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     items(displayLines.size) { idx ->
                         val isCurrent = idx == currentIdx
                         val line = displayLines[idx]
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
                                 line.content,
                                 color = if (isCurrent) LiquidGlassTheme.accentSecondary
-                                else LiquidGlassTheme.onSurfaceMuted,
+                                else LiquidGlassTheme.onSurfaceMuted.copy(alpha = 0.7f),
                                 fontSize = if (isCurrent) 18.sp else 14.sp,
-                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                textAlign = TextAlign.Center
                             )
                             if (line.translation.isNotBlank()) {
+                                Spacer(Modifier.height(3.dp))
                                 Text(
                                     line.translation,
-                                    color = if (isCurrent) LiquidGlassTheme.onSurfaceColor.copy(alpha = 0.8f)
-                                    else LiquidGlassTheme.onSurfaceMuted.copy(alpha = 0.6f),
-                                    fontSize = if (isCurrent) 13.sp else 11.sp
+                                    color = if (isCurrent) LiquidGlassTheme.onSurfaceColor.copy(alpha = 0.85f)
+                                    else LiquidGlassTheme.onSurfaceMuted.copy(alpha = 0.5f),
+                                    fontSize = if (isCurrent) 13.sp else 11.sp,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -1488,94 +1750,124 @@ private fun SettingsPanel(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .background(Color.Black.copy(alpha = 0.5f))
             .clickable(onClick = onClose)
     ) {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth(0.5f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.95f))
-                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(16.dp))
-                .padding(24.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(LiquidGlassTheme.glassBaseColor.copy(alpha = 0.97f))
+                .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(18.dp))
+                .padding(28.dp)
                 .clickable(enabled = false) { }
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "播放设置",
                     color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                Text("✕", color = LiquidGlassTheme.onSurfaceMuted, modifier = Modifier.clickable { onClose() })
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { onClose() }
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✕", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 14.sp)
+                }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             // 播放模式
-            Text("播放模式", color = LiquidGlassTheme.onSurfaceColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(PlayMode.SEQUENCE to "顺序播放", PlayMode.SINGLE to "单曲循环", PlayMode.RANDOM to "随机播放").forEach { (mode, label) ->
-                    val selected = playMode == mode
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.4f)
-                                else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                            .clickable { onModeChange(mode) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(label, color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
-                    }
-                }
+            SettingSection("播放模式") {
+                ChipGroup(
+                    options = listOf(
+                        PlayMode.SEQUENCE to "顺序播放",
+                        PlayMode.SINGLE to "单曲循环",
+                        PlayMode.RANDOM to "随机播放"
+                    ),
+                    selected = playMode,
+                    onSelect = onModeChange
+                )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             // 音质
-            Text("音质", color = LiquidGlassTheme.onSurfaceColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("standard" to "标准", "exhigh" to "极高", "lossless" to "无损", "hires" to "Hi-Res").forEach { (q, label) ->
-                    val selected = quality == q
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.4f)
-                                else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                            .clickable { onQualityChange(q) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(label, color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
-                    }
-                }
+            SettingSection("音质") {
+                ChipGroup(
+                    options = listOf(
+                        "standard" to "标准",
+                        "exhigh" to "极高",
+                        "lossless" to "无损",
+                        "hires" to "Hi-Res"
+                    ),
+                    selected = quality,
+                    onSelect = onQualityChange
+                )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             // 睡眠定时
-            Text("睡眠定时", color = LiquidGlassTheme.onSurfaceColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0L to "关闭", 15 * 60_000L to "15分钟", 30 * 60_000L to "30分钟", 60 * 60_000L to "60分钟").forEach { (ms, label) ->
-                    val selected = sleepTimerMs == ms || (ms == 0L && sleepTimerMs == 0L)
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.4f)
-                                else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                            .clickable { onSleepTimerChange(ms) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(label, color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
-                    }
-                }
+            SettingSection("睡眠定时") {
+                ChipGroup(
+                    options = listOf(
+                        0L to "关闭",
+                        15 * 60_000L to "15分钟",
+                        30 * 60_000L to "30分钟",
+                        60 * 60_000L to "60分钟"
+                    ),
+                    selected = sleepTimerMs,
+                    onSelect = onSleepTimerChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingSection(title: String, content: @Composable () -> Unit) {
+    Text(title, color = LiquidGlassTheme.onSurfaceColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(8.dp))
+    content()
+}
+
+@Composable
+private fun <T> ChipGroup(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isSelected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.4f)
+                        else LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.6f)
+                        else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onSelect(value) }
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    label,
+                    color = if (isSelected) LiquidGlassTheme.onSurfaceBright
+                    else LiquidGlassTheme.onSurfaceMuted,
+                    fontSize = 12.sp
+                )
             }
         }
     }
@@ -1588,7 +1880,7 @@ private fun LoginDialog(
     onDismiss: () -> Unit,
     onLoginSuccess: () -> Unit
 ) {
-    var mode by remember { mutableStateOf("qr") }  // "qr" or "phone"
+    var mode by remember { mutableStateOf("qr") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1608,7 +1900,12 @@ private fun LoginDialog(
                                 .clickable { mode = id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text(label, color = if (selected) LiquidGlassTheme.onSurfaceBright else LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+                            Text(
+                                label,
+                                color = if (selected) LiquidGlassTheme.onSurfaceBright
+                                else LiquidGlassTheme.onSurfaceMuted,
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }
@@ -1627,7 +1924,6 @@ private fun LoginDialog(
 
 @Composable
 private fun QrLoginView(onLoginSuccess: () -> Unit) {
-    val scope = rememberCoroutineScope()
     var qrUrl by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<QrLoginState?>(null) }
     var statusText by remember { mutableStateOf("正在生成二维码…") }
@@ -1640,7 +1936,6 @@ private fun QrLoginView(onLoginSuccess: () -> Unit) {
         }
         qrUrl = "https://music.163.com/login?codekey=$unikey"
         statusText = "请用网易云音乐 App 扫描二维码"
-        // 轮询扫码状态
         while (true) {
             delay(2000)
             val r = NetEaseAuth.pollQrStatus(unikey)
@@ -1652,8 +1947,8 @@ private fun QrLoginView(onLoginSuccess: () -> Unit) {
                     onLoginSuccess()
                     "登录成功"
                 }
-                QrLoginState.EXPIRED -> "二维码已过期"
-                QrLoginState.ERROR -> "登录异常"
+                QrLoginState.EXPIRED -> "二维码已过期，请关闭重试"
+                QrLoginState.ERROR -> "登录异常，请重试"
             }
             if (r.state == QrLoginState.CONFIRMED || r.state == QrLoginState.EXPIRED || r.state == QrLoginState.ERROR) {
                 break
@@ -1759,7 +2054,7 @@ private fun PhoneLoginView(onLoginSuccess: () -> Unit) {
     }
 }
 
-/** 异步加载二维码图片（用在线 QR 生成服务，避免引入 zxing 依赖） */
+/** 异步加载二维码图片 */
 @Composable
 private fun QrCodeImage(content: String) {
     var bitmap by remember(content) { mutableStateOf<ImageBitmap?>(null) }
@@ -1802,31 +2097,43 @@ private fun SectionHeader(
         Text(
             title,
             color = LiquidGlassTheme.onSurfaceColor,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
         if (actionText != null && onAction != null) {
-            Text(
-                actionText,
-                color = LiquidGlassTheme.accentSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier.clickable { onAction() }
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(LiquidGlassTheme.accentSecondary.copy(alpha = 0.15f))
+                    .clickable { onAction() }
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    actionText,
+                    color = LiquidGlassTheme.accentSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun SongRow(song: Song, onPlay: () -> Unit) {
+private fun SongRow(
+    song: Song,
+    onPlay: () -> Unit,
+    onAddToQueue: () -> Unit
+) {
     var hovered by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
-                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.7f)
-                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.4f)
+                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f)
+                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.35f)
             )
             .clickable { onPlay() }
             .pointerInput(Unit) {
@@ -1841,48 +2148,68 @@ private fun SongRow(song: Song, onPlay: () -> Unit) {
                     }
                 }
             }
-            .padding(8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CoverArt(url = song.coverUrl, size = 40.dp)
-        Spacer(Modifier.width(10.dp))
+        // 封面
+        CoverArt(url = song.coverUrl, size = 44.dp, shape = RoundedCornerShape(8.dp))
+        Spacer(Modifier.width(12.dp))
+        // 标题+艺术家
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     song.title,
                     color = LiquidGlassTheme.onSurfaceColor,
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 if (song.isVipOnly) {
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         "VIP",
-                        color = LiquidGlassTheme.announcementHigh,
+                        color = LiquidGlassTheme.onSurfaceBright,
                         fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .clip(RoundedCornerShape(3.dp))
-                            .background(LiquidGlassTheme.announcementHigh.copy(alpha = 0.2f))
-                            .padding(horizontal = 3.dp, vertical = 1.dp)
+                            .background(LiquidGlassTheme.orange)
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
                     )
                 }
             }
+            Spacer(Modifier.height(2.dp))
             Text(
                 "${song.artist.ifBlank { "未知" }} · ${song.album.ifBlank { "—" }}",
                 color = LiquidGlassTheme.onSurfaceMuted,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         Spacer(Modifier.width(8.dp))
+        // 时长
         Text(
             formatMs(song.durationMs),
             color = LiquidGlassTheme.onSurfaceMuted,
             fontSize = 11.sp
         )
+        // 加入队列按钮（hover 显示）
+        if (hovered) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f))
+                    .clickable { onAddToQueue() }
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+", color = LiquidGlassTheme.onSurfaceColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -1892,10 +2219,10 @@ private fun PlaylistRow(playlist: Playlist, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
-                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.7f)
-                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.4f)
+                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f)
+                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.35f)
             )
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
             .pointerInput(Unit) {
@@ -1910,24 +2237,25 @@ private fun PlaylistRow(playlist: Playlist, onClick: (() -> Unit)? = null) {
                     }
                 }
             }
-            .padding(8.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CoverArt(url = playlist.coverUrl, size = 48.dp)
-        Spacer(Modifier.width(10.dp))
+        CoverArt(url = playlist.coverUrl, size = 52.dp, shape = RoundedCornerShape(8.dp))
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 playlist.name,
                 color = LiquidGlassTheme.onSurfaceColor,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Medium
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 "${playlist.trackCount} 首 · ${playlist.creator.ifBlank { "—" }}",
                 color = LiquidGlassTheme.onSurfaceMuted,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1935,21 +2263,213 @@ private fun PlaylistRow(playlist: Playlist, onClick: (() -> Unit)? = null) {
     }
 }
 
+/** 推荐歌单/排行榜横向卡片 */
+@Composable
+private fun PlaylistCard(playlist: Playlist) {
+    var hovered by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.4f)
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        when (e.type) {
+                            PointerEventType.Enter -> hovered = true
+                            PointerEventType.Exit -> hovered = false
+                            else -> {}
+                        }
+                    }
+                }
+            }
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(124.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(LiquidGlassTheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            CoverArt(url = playlist.coverUrl, size = 124.dp, shape = RoundedCornerShape(10.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            playlist.name,
+            color = LiquidGlassTheme.onSurfaceColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "${playlist.trackCount} 首",
+            color = LiquidGlassTheme.onSurfaceMuted,
+            fontSize = 11.sp
+        )
+    }
+}
+
+/** 新碟卡片 */
+@Composable
+private fun AlbumCard(album: NetEaseApi.AlbumInfo) {
+    var hovered by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .width(130.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.4f)
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        when (e.type) {
+                            PointerEventType.Enter -> hovered = true
+                            PointerEventType.Exit -> hovered = false
+                            else -> {}
+                        }
+                    }
+                }
+            }
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(114.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(LiquidGlassTheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            CoverArt(url = album.coverUrl, size = 114.dp, shape = RoundedCornerShape(10.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            album.name,
+            color = LiquidGlassTheme.onSurfaceColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            album.artist.ifBlank { "—" },
+            color = LiquidGlassTheme.onSurfaceMuted,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** MV 卡片 */
+@Composable
+private fun MvCard(mv: NetEaseApi.MvInfo) {
+    var hovered by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (hovered) LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
+                else LiquidGlassTheme.glassBaseColor.copy(alpha = 0.4f)
+            )
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        when (e.type) {
+                            PointerEventType.Enter -> hovered = true
+                            PointerEventType.Exit -> hovered = false
+                            else -> {}
+                        }
+                    }
+                }
+            }
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(144.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(LiquidGlassTheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            CoverArt(url = mv.coverUrl, size = 144.dp, shape = RoundedCornerShape(10.dp))
+            // 播放按钮覆盖
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("▶", color = LiquidGlassTheme.onSurfaceBright, fontSize = 18.sp)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            mv.name,
+            color = LiquidGlassTheme.onSurfaceColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "${mv.artist} · ${formatPlayCount(mv.playCount)}",
+            color = LiquidGlassTheme.onSurfaceMuted,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 @Composable
 private fun FlowChips(items: List<String>, onClick: (String) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items.take(8).forEach { word ->
-            Box(
+        items.take(12).forEachIndexed { idx, word ->
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f))
+                    .border(1.dp, LiquidGlassTheme.glassBorder, RoundedCornerShape(14.dp))
                     .clickable { onClick(word) }
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(word, color = LiquidGlassTheme.onSurfaceColor, fontSize = 12.sp, maxLines = 1)
+                if (idx < 3) {
+                    Text(
+                        "${idx + 1}",
+                        color = LiquidGlassTheme.accentSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    word,
+                    color = LiquidGlassTheme.onSurfaceColor,
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
             }
         }
     }
@@ -1958,22 +2478,83 @@ private fun FlowChips(items: List<String>, onClick: (String) -> Unit) {
 @Composable
 private fun EmptyState(text: String) {
     Box(
-        modifier = Modifier.fillMaxWidth().padding(32.dp),
+        modifier = Modifier.fillMaxWidth().padding(40.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = LiquidGlassTheme.onSurfaceMuted, fontSize = 13.sp)
+        Text(
+            text,
+            color = LiquidGlassTheme.onSurfaceMuted,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
+private fun LoadingState(text: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            androidx.compose.material.CircularProgressIndicator(
+                color = LiquidGlassTheme.accentSecondary,
+                strokeWidth = 3.dp
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text,
+                color = LiquidGlassTheme.onSurfaceMuted,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "⚠",
+                color = LiquidGlassTheme.announcementHigh,
+                fontSize = 32.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                message,
+                color = LiquidGlassTheme.onSurfaceMuted,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(
+                onClick = onRetry,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            ) { Text("重试") }
+        }
     }
 }
 
 /** 异步加载封面图，加载失败显示音乐占位符 */
 @Composable
-private fun CoverArt(url: String?, size: androidx.compose.ui.unit.Dp) {
+private fun CoverArt(
+    url: String?,
+    size: androidx.compose.ui.unit.Dp,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(6.dp)
+) {
     var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(url) {
         bitmap = null
         if (!url.isNullOrBlank()) {
             bitmap = withContext(Dispatchers.IO) {
                 try {
+                    // 网易云封面 URL 走 http/https，用 ImageIO 异步加载
                     val img = ImageIO.read(URL(url))
                     img?.toComposeImageBitmap()
                 } catch (_: Exception) { null }
@@ -1983,7 +2564,7 @@ private fun CoverArt(url: String?, size: androidx.compose.ui.unit.Dp) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(shape)
             .background(LiquidGlassTheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
@@ -1994,7 +2575,7 @@ private fun CoverArt(url: String?, size: androidx.compose.ui.unit.Dp) {
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-        } ?: Text("🎵", color = LiquidGlassTheme.onSurfaceMuted, fontSize = (size.value / 2).sp)
+        } ?: Text("🎵", color = LiquidGlassTheme.onSurfaceMuted, fontSize = (size.value / 2.5f).sp)
     }
 }
 
@@ -2002,6 +2583,15 @@ private fun CoverArt(url: String?, size: androidx.compose.ui.unit.Dp) {
 
 /** 播放模式 */
 enum class PlayMode { SEQUENCE, SINGLE, RANDOM }
+
+/** 循环切换播放模式 */
+private fun nextPlayMode(mode: PlayMode): PlayMode {
+    return when (mode) {
+        PlayMode.SEQUENCE -> PlayMode.SINGLE
+        PlayMode.SINGLE -> PlayMode.RANDOM
+        PlayMode.RANDOM -> PlayMode.SEQUENCE
+    }
+}
 
 /** 解析歌曲可播放源：本地直接用 streamUrl；网易云需先调 songUrl 接口 */
 private suspend fun resolvePlayableSource(song: Song, quality: String): Pair<String, Boolean> {
@@ -2025,4 +2615,13 @@ private fun formatMs(ms: Long): String {
     val m = totalSec / 60
     val s = totalSec % 60
     return "%02d:%02d".format(m, s)
+}
+
+/** 播放次数 → 万/亿 显示 */
+private fun formatPlayCount(count: Int): String {
+    return when {
+        count >= 100_000_000 -> "%.1f亿".format(count / 100_000_000.0)
+        count >= 10_000 -> "%.0f万".format(count / 10_000.0)
+        else -> count.toString()
+    }
 }

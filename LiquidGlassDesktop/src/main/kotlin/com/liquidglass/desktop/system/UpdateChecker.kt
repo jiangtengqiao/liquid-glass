@@ -21,8 +21,8 @@ import java.net.URL
 object UpdateChecker {
 
     /** 当前 Desktop 端版本（需与 build.gradle.kts packageVersion 保持一致） */
-    const val LOCAL_VERSION = "2.10.0"
-    const val LOCAL_VERSION_CODE = 54
+    const val LOCAL_VERSION = "2.11.0"
+    const val LOCAL_VERSION_CODE = 55
 
     private const val VERSION_JSON_GITHUB =
         "https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/version.json"
@@ -37,7 +37,7 @@ object UpdateChecker {
 
     private const val CONNECT_TIMEOUT_MS = 6_000
     private const val READ_TIMEOUT_MS = 8_000
-    private const val UA = "LiquidGlass-Desktop/2.10.0"
+    private const val UA = "LiquidGlass-Desktop/2.11.0"
 
     /** 上次成功检查时间戳（节流：30 分钟内不重复请求） */
     @Volatile

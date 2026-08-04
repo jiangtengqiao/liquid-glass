@@ -39,9 +39,24 @@ object NetEaseApiClient {
 
     /**
      * 线程安全地获取当前所有 cookie 的扁平化 "k=v; k=v" 字符串。
+     *
+     * 合并三层：持久化登录态 → 内存（覆盖同名），保证重启后 MUSIC_U 不丢失。
      */
     private fun flattenCookies(): String {
-        val merged = linkedMapOf<String, String>()
+        val merged = LinkedHashMap<String, String>()
+        // 1) 持久化（最低优先级），保证重启后旧 cookie 不被新响应冲掉
+        val persisted = SessionStore.getCookies()
+        if (persisted.isNotBlank()) {
+            persisted.split("; ").forEach { pair ->
+                val idx = pair.indexOf('=')
+                if (idx > 0) {
+                    val k = pair.substring(0, idx).trim()
+                    val v = pair.substring(idx + 1).trim()
+                    if (k.isNotBlank() && v.isNotBlank()) merged[k] = v
+                }
+            }
+        }
+        // 2) 内存（最高优先级，覆盖同名）
         cookieLock.read {
             for (hostMap in cookieStore.values) {
                 synchronized(hostMap) {
@@ -133,14 +148,19 @@ object NetEaseApiClient {
      * 只保留 os/osver/appver/channel/wevt 这 5 个客户端静态声明字段：
      *  - 这是请求被服务端识别为"合法客户端"的关键，缺失触发反爬
      *  - os=pc 表示 PC 网页端，与 Referer/Origin/UA 一致
+     *  - appver 升级到 2.10.18 匹配当前 PC 客户端版本
      */
     private const val CLIENT_COOKIE =
-        "os=pc; osver=Microsoft-Windows-10-Build-19045-64.0; appver=2.10.14; channel=netease; wevt=web"
+        "os=pc; osver=Microsoft-Windows-10-Build-19045-64.0; appver=2.10.18; channel=netease; wevt=web"
 
-    /** PC 网页端 UA，与 os=pc 一致 */
+    /** PC 网页端 UA，与 os=pc 一致（Chrome 124） */
     private const val CLIENT_UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
         "Chrome/124.0.0.0 Safari/537.36"
+
+    /** 浏览器客户端提示（Sec-Ch-Ua 系列），与 UA 中 Chrome 124 一致 */
+    private const val SEC_CH_UA =
+        "\"Google Chrome\";v=\"124\", \"Chromium\";v=\"124\", \"Not.A/Brand\";v=\"99\""
 
     /**
      * 模拟的中国 IP 地址，用于 X-Real-IP / X-Forwarded-For 请求头。
@@ -239,7 +259,15 @@ object NetEaseApiClient {
             .header("Origin", BASE)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json, text/plain, */*")
-            .header("Accept-Language", "zh-CN,zh;q=0.9")
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+            // 浏览器 Sec-* 系列：让请求更像真实浏览器 fetch 调用，规避反爬
+            .header("Sec-Ch-Ua", SEC_CH_UA)
+            .header("Sec-Ch-Ua-Mobile", "?0")
+            .header("Sec-Ch-Ua-Platform", "\"Windows\"")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
+            .header("Sec-Fetch-Site", "same-origin")
+            // 模拟中国 IP，规避地域版权校验
             .header("X-Real-IP", CHINA_IP)
             .header("X-Forwarded-For", CHINA_IP)
             .build()

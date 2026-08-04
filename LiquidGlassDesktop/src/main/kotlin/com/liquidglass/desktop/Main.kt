@@ -69,7 +69,7 @@ import java.util.prefs.Preferences
 import kotlin.math.PI
 
 /** 侧边栏可导航的屏幕 */
-enum class Screen { Home, Music, Translation, About, BetaPioneer, Login }
+enum class Screen { Home, Music, Translation, Login, Payment, MemberCompare, BetaPioneer, Declaration, About }
 
 /**
  * 应用入口：创建窗口并托管 App
@@ -219,9 +219,12 @@ fun App() {
                         )
                         Screen.Music -> MusicScreen()
                         Screen.Translation -> TranslationScreen(manager = translationManager)
-                        Screen.About -> AboutScreen()
-                        Screen.BetaPioneer -> BetaPioneerScreen(betaPioneerManager = betaPioneerManager)
                         Screen.Login -> com.liquidglass.desktop.ui.LoginScreen()
+                        Screen.Payment -> com.liquidglass.desktop.ui.PaymentScreen()
+                        Screen.MemberCompare -> com.liquidglass.desktop.ui.MemberCompareScreen()
+                        Screen.BetaPioneer -> BetaPioneerScreen()
+                        Screen.Declaration -> com.liquidglass.desktop.ui.DeclarationScreen()
+                        Screen.About -> AboutScreen()
                     }
                 }
             }
@@ -443,8 +446,11 @@ private val navItems: List<NavItem> = listOf(
     NavItem(Screen.Music, "音乐", "♪"),
     NavItem(Screen.Translation, "翻译中心", "文"),
     NavItem(Screen.Login, "账号", "⊙"),
-    NavItem(Screen.About, "关于", "ⓘ"),
-    NavItem(Screen.BetaPioneer, "Beta 先锋", "★")
+    NavItem(Screen.Payment, "会员", "¥"),
+    NavItem(Screen.MemberCompare, "权益", "≣"),
+    NavItem(Screen.BetaPioneer, "Beta 先锋", "★"),
+    NavItem(Screen.Declaration, "声明", "§"),
+    NavItem(Screen.About, "关于", "ⓘ")
 )
 
 /** 桌面快捷方式 Preferences 的命名空间标记 */

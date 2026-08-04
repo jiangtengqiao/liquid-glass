@@ -32,8 +32,8 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
-            // v2.10.0：恢复音乐板块（10+ 功能：搜索/网易云/本地/歌词/队列/音质/定时/模式/登录/歌单）
-            packageVersion = "2.10.0"
+            // v2.11.0：大版本完善 - UI调亮/翻译额度修复/会员体系/音乐修复/支付宝/Beta/词典扩充
+            packageVersion = "2.11.0"
             description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
             windows {

@@ -136,6 +136,8 @@ class PlaybackController {
 
             // 起始位置 = fromFrame 对应的 ms（用于 resume/seek 后保持累计进度）
             startPositionMs = estimateMsFromFrame(fromFrame)
+            // 预设 playStartedAt，避免轮询线程在 playbackStarted 回调前读到 0 值
+            playStartedAt = System.currentTimeMillis()
 
             // 启动后台线程播放，避免阻塞 UI
             Thread {

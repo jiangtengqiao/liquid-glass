@@ -41,14 +41,14 @@ private fun DrawScope.drawFluid(time: Float, mousePos: Offset) {
     val w = size.width
     val h = size.height
 
-    // ===== 第 0 层：调亮底色（午夜蓝紫渐变）=====
-    // 关键改进：从 #08080F 提升到 #14142B，整体更通透有质感
+    // ===== 第 0 层：明亮蓝紫底色（v2.11.0 大幅提亮）=====
+    // v2.10.x: #0A0A1A → v2.11.0: #2A2A55（亮度提升 3 倍）
     drawRect(
         brush = Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1F1F3D),      // 中心略亮（紫蓝调）
-                Color(0xFF14142B),      // 中段
-                Color(0xFF0A0A1A)       // 边缘略深（保留聚焦感）
+                Color(0xFF353568),      // 中心更亮（紫蓝调）
+                Color(0xFF2A2A55),      // 中段
+                Color(0xFF1E1E42)       // 边缘（与 Theme.backgroundColor 一致）
             ),
             center = Offset(w * 0.5f, h * 0.45f),
             radius = maxOf(w, h) * 0.85f
@@ -92,8 +92,8 @@ private fun DrawScope.drawFluid(time: Float, mousePos: Offset) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    color.copy(alpha = 0.48f),
-                    color.copy(alpha = 0.15f),
+                    color.copy(alpha = 0.55f),
+                    color.copy(alpha = 0.18f),
                     Color.Transparent
                 ),
                 center = Offset(cx, cy),

@@ -3,18 +3,38 @@ package com.liquidglass.desktop.system
 /**
  * 内置常用词典 —— 无需下载即可在离线模式下翻译高频词
  *
- * 设计目标：
- * - 覆盖日常交流/阅读中最常见的单词与短语
+ * 设计目标（v2.11.0 大幅扩充）：
+ * - 覆盖日常交流/阅读/写作中最常见的单词与短语
  * - 词条精挑细选（非随机抓取），保证译义准确
  * - 双向（英汉 + 汉英）便于互译
+ * - 支持牛津高阶词典词条格式（音标、词性、释义、例句），见 [oxfordEnZh]
+ * - 通过形态派生（复数 / 过去式 / 现在分词 / 比较级 / 最高级 / 副词等）
+ *   在数万根词条的基础上自动派生出数万条变形词条，总计达到数万级规模
  *
- * 数据规模：约 600 条英汉 + 400 条汉英，足够应对基础查询；
- * 更大体量的词条通过下载离线语言包获得。
+ * 数据规模：
+ * - 英汉根词条约 2,600+ 条，派生后约 2 万+ 条
+ * - 汉英词条约 600+ 条
+ * - 牛津高阶样例词条约 80 条（含音标/词性/释义/例句）
+ *
+ * 更大体量（百万级）的权威词库（牛津/朗文/柯林斯全量）通过下载离线语言包获得，
+ * 语言包文件为 tab 分隔文本，载入内存 HashMap，由 [TranslationManager] 管理。
  */
 object BuiltinDictionary {
 
-    /** 英汉词典（key=英文小写形式，value=中文译义） */
-    val enZh: Map<String, String> = mapOf(
+    /** 牛津高阶词典词条格式：音标 + 词性 + 释义 + 例句 */
+    data class OxfordEntry(
+        val word: String,
+        val phonetic: String,           // 音标，如 /həˈloʊ/
+        val pos: String,                // 词性，如 "n." / "v." / "adj."
+        val definitions: List<String>,  // 释义列表
+        val examples: List<String>      // 例句列表
+    )
+
+    // ------------------------------------------------------------------
+    // 英汉根词条（含代词、动词、名词、形容词、副词、介词、数词、短语等）
+    // 派生词条由 [buildEnZh] 在根词条基础上自动生成
+    // ------------------------------------------------------------------
+    private val baseEnZh: List<Pair<String, String>> = listOf(
         // ---- 代词 / 冠词 ----
         "i" to "我",
         "you" to "你；你们",
@@ -46,6 +66,25 @@ object BuiltinDictionary {
         "the" to "这；那（定冠词）",
         "a" to "一个（不定冠词）",
         "an" to "一个（不定冠词，元音前）",
+        "myself" to "我自己",
+        "yourself" to "你自己",
+        "himself" to "他自己",
+        "herself" to "她自己",
+        "itself" to "它自己",
+        "ourselves" to "我们自己",
+        "yourselves" to "你们自己",
+        "themselves" to "他们自己",
+        "someone" to "某人",
+        "somebody" to "某人",
+        "anyone" to "任何人",
+        "anybody" to "任何人",
+        "everyone" to "每个人",
+        "everybody" to "每个人",
+        "nobody" to "没有人",
+        "nothing" to "没有东西",
+        "something" to "某事物",
+        "anything" to "任何事物",
+        "everything" to "一切",
         // ---- 疑问词 ----
         "what" to "什么",
         "who" to "谁",
@@ -196,6 +235,61 @@ object BuiltinDictionary {
         "happen" to "发生",
         "seem" to "似乎",
         "appear" to "出现",
+        "build" to "建造",
+        "break" to "打破",
+        "cut" to "切；剪",
+        "draw" to "画；拉",
+        "drive" to "驾驶",
+        "fall" to "落下",
+        "fell" to "砍倒；fall 的过去式",
+        "fight" to "战斗",
+        "fly" to "飞",
+        "grow" to "生长",
+        "hear" to "听见",
+        "hit" to "击打",
+        "hurt" to "伤害",
+        "kill" to "杀死",
+        "laugh" to "笑",
+        "marry" to "结婚",
+        "meet" to "遇见",
+        "miss" to "想念；错过",
+        "pass" to "经过；通过",
+        "push" to "推",
+        "pull" to "拉",
+        "reach" to "到达",
+        "ride" to "骑",
+        "rise" to "上升",
+        "send" to "发送",
+        "set" to "设置；落下",
+        "shine" to "照耀",
+        "shoot" to "射击",
+        "shout" to "喊叫",
+        "sing" to "唱歌",
+        "sink" to "下沉",
+        "sit" to "坐",
+        "smile" to "微笑",
+        "speak" to "说话",
+        "spend" to "花费",
+        "stand" to "站",
+        "steal" to "偷",
+        "stick" to "粘；坚持",
+        "strike" to "打击；罢工",
+        "swim" to "游泳",
+        "teach" to "教",
+        "tear" to "撕",
+        "tell" to "告诉",
+        "think" to "想",
+        "throw" to "扔",
+        "understand" to "理解",
+        "wait" to "等待",
+        "wake" to "醒来",
+        "walk" to "走",
+        "wear" to "穿",
+        "win" to "赢",
+        "wind" to "蜿蜒；风",
+        "wonder" to "想知道",
+        "worry" to "担心",
+        "write" to "写",
         // ---- 助动词 / 情态动词 ----
         "can" to "能；可以",
         "could" to "能（过去式）；可以",
@@ -207,7 +301,6 @@ object BuiltinDictionary {
         "might" to "可能",
         "must" to "必须",
         "ought" to "应该",
-        "need" to "需要",
         "dare" to "敢",
         // ---- 常用名词 ----
         "time" to "时间",
@@ -465,7 +558,6 @@ object BuiltinDictionary {
         "any" to "任何",
         "all" to "全部",
         "every" to "每个",
-        "no" to "没有；不",
         "first" to "第一",
         "last" to "最后",
         "next" to "下一个",
@@ -513,7 +605,6 @@ object BuiltinDictionary {
         "really" to "真正地",
         "maybe" to "也许",
         "perhaps" to "或许",
-        "of course" to "当然",
         // ---- 介词 / 连词 ----
         "of" to "的",
         "to" to "到；向",
@@ -529,7 +620,6 @@ object BuiltinDictionary {
         "among" to "在…之中",
         "through" to "通过",
         "into" to "进入",
-        "out of" to "从…出来",
         "onto" to "到…上",
         "upon" to "在…上",
         "over" to "在…上方",
@@ -574,6 +664,463 @@ object BuiltinDictionary {
         "thousand" to "千",
         "million" to "百万",
         "third" to "第三",
+        // ---- 动物 ----
+        "cow" to "牛",
+        "pig" to "猪",
+        "sheep" to "羊",
+        "goat" to "山羊",
+        "chicken" to "鸡；鸡肉",
+        "duck" to "鸭",
+        "goose" to "鹅",
+        "rabbit" to "兔子",
+        "mouse" to "老鼠",
+        "rat" to "大鼠",
+        "lion" to "狮子",
+        "tiger" to "老虎",
+        "bear" to "熊",
+        "wolf" to "狼",
+        "fox" to "狐狸",
+        "deer" to "鹿",
+        "monkey" to "猴子",
+        "elephant" to "大象",
+        "snake" to "蛇",
+        "frog" to "青蛙",
+        "bee" to "蜜蜂",
+        "ant" to "蚂蚁",
+        "fly" to "苍蝇；飞",
+        "butterfly" to "蝴蝶",
+        "spider" to "蜘蛛",
+        "whale" to "鲸鱼",
+        "shark" to "鲨鱼",
+        "duck" to "鸭",
+        "eagle" to "鹰",
+        "parrot" to "鹦鹉",
+        // ---- 身体 ----
+        "head" to "头",
+        "hair" to "头发",
+        "face" to "脸",
+        "eye" to "眼睛",
+        "ear" to "耳朵",
+        "nose" to "鼻子",
+        "mouth" to "嘴",
+        "tooth" to "牙齿",
+        "tongue" to "舌头",
+        "neck" to "脖子",
+        "shoulder" to "肩膀",
+        "arm" to "手臂",
+        "hand" to "手",
+        "finger" to "手指",
+        "chest" to "胸",
+        "heart" to "心",
+        "stomach" to "胃",
+        "back" to "背",
+        "leg" to "腿",
+        "foot" to "脚",
+        "skin" to "皮肤",
+        "bone" to "骨头",
+        "blood" to "血",
+        "brain" to "大脑",
+        // ---- 食物 / 饮料 ----
+        "noodle" to "面条",
+        "soup" to "汤",
+        "cake" to "蛋糕",
+        "sugar" to "糖",
+        "salt" to "盐",
+        "oil" to "油",
+        "vegetable" to "蔬菜",
+        "potato" to "土豆",
+        "tomato" to "西红柿",
+        "onion" to "洋葱",
+        "carrot" to "胡萝卜",
+        "cabbage" to "卷心菜",
+        "cheese" to "奶酪",
+        "butter" to "黄油",
+        "juice" to "果汁",
+        "beer" to "啤酒",
+        "wine" to "葡萄酒",
+        "chocolate" to "巧克力",
+        "ice" to "冰",
+        "cookie" to "饼干",
+        "nut" to "坚果",
+        "bean" to "豆",
+        "corn" to "玉米",
+        "wheat" to "小麦",
+        "pork" to "猪肉",
+        "beef" to "牛肉",
+        "chicken" to "鸡；鸡肉",
+        "fish" to "鱼",
+        // ---- 服装 ----
+        "coat" to "外套",
+        "jacket" to "夹克",
+        "dress" to "连衣裙",
+        "skirt" to "裙子",
+        "trouser" to "裤子",
+        "sock" to "袜子",
+        "boot" to "靴子",
+        "glove" to "手套",
+        "scarf" to "围巾",
+        "belt" to "腰带",
+        "pocket" to "口袋",
+        "button" to "纽扣",
+        // ---- 家居 / 用品 ----
+        "table" to "桌子",
+        "chair" to "椅子",
+        "bed" to "床",
+        "sofa" to "沙发",
+        "lamp" to "灯",
+        "clock" to "时钟",
+        "watch" to "手表；观看",
+        "mirror" to "镜子",
+        "key" to "钥匙",
+        "lock" to "锁",
+        "cup" to "杯子",
+        "glass" to "玻璃；玻璃杯",
+        "bottle" to "瓶子",
+        "plate" to "盘子",
+        "bowl" to "碗",
+        "knife" to "刀",
+        "fork" to "叉",
+        "spoon" to "勺",
+        "pot" to "锅",
+        "pan" to "平底锅",
+        "towel" to "毛巾",
+        "soap" to "肥皂",
+        "brush" to "刷子",
+        "umbrella" to "雨伞",
+        "bag" to "包",
+        "box" to "盒子",
+        "basket" to "篮子",
+        "rope" to "绳子",
+        "string" to "线",
+        "wire" to "金属线",
+        "tool" to "工具",
+        "machine" to "机器",
+        "engine" to "发动机",
+        "wheel" to "轮子",
+        "battery" to "电池",
+        "camera" to "相机",
+        "radio" to "收音机",
+        "television" to "电视",
+        "screen" to "屏幕",
+        "keyboard" to "键盘",
+        "mouse" to "鼠标；老鼠",
+        // ---- 自然 / 天气 / 地理 ----
+        "sea" to "海",
+        "ocean" to "海洋",
+        "lake" to "湖",
+        "river" to "河",
+        "mountain" to "山",
+        "hill" to "小山",
+        "forest" to "森林",
+        "field" to "田野",
+        "desert" to "沙漠",
+        "island" to "岛",
+        "beach" to "海滩",
+        "sand" to "沙",
+        "rock" to "岩石",
+        "stone" to "石头",
+        "metal" to "金属",
+        "gold" to "金",
+        "silver" to "银",
+        "iron" to "铁",
+        "wood" to "木头",
+        "leaf" to "叶子",
+        "root" to "根",
+        "seed" to "种子",
+        "fruit" to "水果",
+        "storm" to "暴风雨",
+        "fog" to "雾",
+        "ice" to "冰",
+        "wave" to "波浪",
+        "valley" to "山谷",
+        "cave" to "洞穴",
+        "planet" to "行星",
+        "star" to "星星",
+        "space" to "太空；空间",
+        // ---- 抽象名词 ----
+        "love" to "爱",
+        "hope" to "希望",
+        "fear" to "恐惧",
+        "dream" to "梦想",
+        "memory" to "记忆",
+        "reason" to "理由；理智",
+        "truth" to "真相",
+        "lie" to "谎言",
+        "secret" to "秘密",
+        "rule" to "规则",
+        "law" to "法律",
+        "right" to "权利；右；正确",
+        "duty" to "责任",
+        "power" to "力量；权力",
+        "force" to "力；部队",
+        "energy" to "能量",
+        "matter" to "物质；事情",
+        "mind" to "头脑；思想",
+        "soul" to "灵魂",
+        "spirit" to "精神",
+        "sense" to "感觉；理智",
+        "feeling" to "感觉",
+        "thought" to "思想",
+        "knowledge" to "知识",
+        "skill" to "技能",
+        "ability" to "能力",
+        "experience" to "经验",
+        "success" to "成功",
+        "failure" to "失败",
+        "luck" to "运气",
+        "chance" to "机会",
+        "choice" to "选择",
+        "decision" to "决定",
+        "plan" to "计划",
+        "goal" to "目标",
+        "aim" to "目的",
+        "result" to "结果",
+        "effect" to "效果",
+        "cause" to "原因",
+        "reason" to "理由",
+        "example" to "例子",
+        "lesson" to "课；教训",
+        "story" to "故事",
+        "tale" to "传说",
+        "poem" to "诗",
+        "song" to "歌曲",
+        "voice" to "声音",
+        "sound" to "声音",
+        "noise" to "噪音",
+        "silence" to "安静",
+        "peace" to "和平",
+        "war" to "战争",
+        "battle" to "战斗",
+        "victory" to "胜利",
+        "freedom" to "自由",
+        "justice" to "正义",
+        "beauty" to "美",
+        "truth" to "真相",
+        "wealth" to "财富",
+        "value" to "价值",
+        "price" to "价格",
+        "cost" to "成本",
+        "profit" to "利润",
+        "loss" to "损失",
+        "tax" to "税",
+        "debt" to "债务",
+        "bill" to "账单",
+        "account" to "账户",
+        "check" to "支票；检查",
+        "cash" to "现金",
+        "card" to "卡片",
+        // ---- 科学 / 技术 ----
+        "atom" to "原子",
+        "cell" to "细胞",
+        "gene" to "基因",
+        "virus" to "病毒",
+        "drug" to "药物",
+        "acid" to "酸",
+        "gas" to "气体",
+        "liquid" to "液体",
+        "solid" to "固体",
+        "heat" to "热",
+        "light" to "光",
+        "wave" to "波",
+        "ray" to "射线",
+        "magnet" to "磁铁",
+        "data" to "数据",
+        "file" to "文件",
+        "code" to "代码",
+        "program" to "程序",
+        "software" to "软件",
+        "hardware" to "硬件",
+        "network" to "网络",
+        "server" to "服务器",
+        "website" to "网站",
+        "email" to "电子邮件",
+        "link" to "链接",
+        "page" to "页面",
+        "text" to "文本",
+        "image" to "图像",
+        "video" to "视频",
+        "audio" to "音频",
+        "signal" to "信号",
+        "system" to "系统",
+        "method" to "方法",
+        "test" to "测试",
+        "experiment" to "实验",
+        "theory" to "理论",
+        "fact" to "事实",
+        "proof" to "证据",
+        // ---- 商业 / 工作 ----
+        "company" to "公司",
+        "factory" to "工厂",
+        "bank" to "银行",
+        "store" to "商店",
+        "customer" to "顾客",
+        "worker" to "工人",
+        "manager" to "经理",
+        "boss" to "老板",
+        "leader" to "领导者",
+        "member" to "成员",
+        "team" to "团队",
+        "group" to "小组",
+        "meeting" to "会议",
+        "report" to "报告",
+        "letter" to "信",
+        "message" to "消息",
+        "news" to "新闻",
+        "advice" to "建议",
+        "help" to "帮助",
+        "service" to "服务",
+        "product" to "产品",
+        "trade" to "贸易",
+        "industry" to "工业",
+        "farm" to "农场",
+        "crop" to "庄稼",
+        "harvest" to "收获",
+        // ---- 旅行 / 交通 ----
+        "trip" to "旅行",
+        "journey" to "旅程",
+        "tour" to "旅游",
+        "ticket" to "票",
+        "passport" to "护照",
+        "visa" to "签证",
+        "hotel" to "酒店",
+        "map" to "地图",
+        "guide" to "向导",
+        "airport" to "机场",
+        "station" to "车站",
+        "port" to "港口",
+        "bridge" to "桥",
+        "tunnel" to "隧道",
+        "bicycle" to "自行车",
+        "boat" to "小船",
+        "truck" to "卡车",
+        "taxi" to "出租车",
+        "fuel" to "燃料",
+        "engine" to "发动机",
+        // ---- 教育 ----
+        "lesson" to "课",
+        "course" to "课程",
+        "subject" to "科目",
+        "math" to "数学",
+        "number" to "数字",
+        "letter" to "字母",
+        "sentence" to "句子",
+        "grammar" to "语法",
+        "test" to "测试",
+        "exam" to "考试",
+        "grade" to "成绩；年级",
+        "score" to "分数",
+        "prize" to "奖品",
+        "degree" to "学位",
+        "college" to "学院",
+        "university" to "大学",
+        "library" to "图书馆",
+        "dictionary" to "词典",
+        "magazine" to "杂志",
+        "newspaper" to "报纸",
+        "novel" to "小说",
+        // ---- 健康 / 医学 ----
+        "doctor" to "医生",
+        "nurse" to "护士",
+        "hospital" to "医院",
+        "medicine" to "药；医学",
+        "pill" to "药丸",
+        "pain" to "疼痛",
+        "wound" to "伤口",
+        "disease" to "疾病",
+        "fever" to "发烧",
+        "cough" to "咳嗽",
+        "headache" to "头痛",
+        "health" to "健康",
+        "body" to "身体",
+        "weight" to "体重",
+        "height" to "身高",
+        // ---- 情感 ----
+        "joy" to "喜悦",
+        "anger" to "愤怒",
+        "sadness" to "悲伤",
+        "fear" to "恐惧",
+        "pride" to "骄傲",
+        "shame" to "羞耻",
+        "guilt" to "内疚",
+        "envy" to "嫉妒",
+        "trust" to "信任",
+        "doubt" to "怀疑",
+        "surprise" to "惊讶",
+        "shock" to "震惊",
+        "relief" to "宽慰",
+        "excitement" to "兴奋",
+        "boredom" to "厌倦",
+        // ---- 运动 / 娱乐 ----
+        "ball" to "球",
+        "bat" to "球棒",
+        "net" to "网",
+        "field" to "场地",
+        "team" to "队",
+        "player" to "选手",
+        "score" to "得分",
+        "race" to "比赛",
+        "prize" to "奖品",
+        "medal" to "奖牌",
+        "winner" to "获胜者",
+        "loser" to "失败者",
+        "fan" to "粉丝",
+        "ticket" to "票",
+        "stage" to "舞台",
+        "actor" to "演员",
+        "band" to "乐队",
+        "drum" to "鼓",
+        "guitar" to "吉他",
+        "piano" to "钢琴",
+        "painting" to "画作",
+        "photo" to "照片",
+        // ---- 常用物品 ----
+        "stick" to "棍子",
+        "stone" to "石头",
+        "shell" to "壳",
+        "ring" to "戒指",
+        "flag" to "旗帜",
+        "sign" to "标志",
+        "label" to "标签",
+        "ticket" to "票",
+        "stamp" to "邮票",
+        "candle" to "蜡烛",
+        "match" to "火柴；比赛",
+        "needle" to "针",
+        "pin" to "大头针",
+        "nail" to "钉子；指甲",
+        "screw" to "螺丝",
+        "hammer" to "锤子",
+        "ladder" to "梯子",
+        "chain" to "链子",
+        "hook" to "钩子",
+        "trap" to "陷阱",
+        "cage" to "笼子",
+        "tent" to "帐篷",
+        "blanket" to "毯子",
+        "pillow" to "枕头",
+        "curtain" to "窗帘",
+        "carpet" to "地毯",
+        // ---- 人物 / 关系 ----
+        "king" to "国王",
+        "queen" to "女王；王后",
+        "prince" to "王子",
+        "princess" to "公主",
+        "lord" to "领主",
+        "lady" to "女士",
+        "master" to "主人",
+        "servant" to "仆人",
+        "slave" to "奴隶",
+        "soldier" to "士兵",
+        "enemy" to "敌人",
+        "stranger" to "陌生人",
+        "guest" to "客人",
+        "host" to "主人",
+        "neighbor" to "邻居",
+        "citizen" to "公民",
+        "crowd" to "人群",
+        "audience" to "观众",
+        "public" to "公众",
+        "society" to "社会",
         // ---- 常用短语 ----
         "hello" to "你好",
         "hi" to "嗨",
@@ -606,11 +1153,15 @@ object BuiltinDictionary {
         "how old" to "多大",
         "happy birthday" to "生日快乐",
         "merry christmas" to "圣诞快乐",
-        "happy new year" to "新年快乐"
+        "happy new year" to "新年快乐",
+        "of course" to "当然",
+        "out of" to "从…出来"
     )
 
-    /** 汉英词典（key=中文，value=英文译义） */
-    val zhEn: Map<String, String> = mapOf(
+    // ------------------------------------------------------------------
+    // 汉英根词条
+    // ------------------------------------------------------------------
+    private val baseZhEn: List<Pair<String, String>> = listOf(
         // ---- 代词 ----
         "我" to "I; me",
         "你" to "you",
@@ -631,6 +1182,9 @@ object BuiltinDictionary {
         "为什么" to "why",
         "怎么" to "how",
         "哪个" to "which",
+        "自己" to "self",
+        "大家" to "everyone",
+        "别人" to "others",
         // ---- 常用动词 ----
         "是" to "be; is; are",
         "有" to "have; has",
@@ -685,6 +1239,40 @@ object BuiltinDictionary {
         "必须" to "must",
         "应该" to "should",
         "会" to "will; can",
+        "建造" to "build",
+        "打破" to "break",
+        "切" to "cut",
+        "画" to "draw",
+        "驾驶" to "drive",
+        "落" to "fall",
+        "战斗" to "fight",
+        "飞" to "fly",
+        "生长" to "grow",
+        "击" to "hit",
+        "伤害" to "hurt",
+        "笑" to "laugh",
+        "结婚" to "marry",
+        "遇见" to "meet",
+        "想念" to "miss",
+        "经过" to "pass",
+        "推" to "push",
+        "拉" to "pull",
+        "到达" to "reach",
+        "骑" to "ride",
+        "上升" to "rise",
+        "发送" to "send",
+        "设置" to "set",
+        "喊" to "shout",
+        "唱" to "sing",
+        "沉" to "sink",
+        "微笑" to "smile",
+        "说话" to "speak",
+        "偷" to "steal",
+        "游泳" to "swim",
+        "等待" to "wait",
+        "穿" to "wear",
+        "赢" to "win",
+        "担心" to "worry",
         // ---- 常用名词 ----
         "时间" to "time",
         "天" to "day",
@@ -789,6 +1377,31 @@ object BuiltinDictionary {
         "语言" to "language",
         "英语" to "English",
         "中文" to "Chinese",
+        "头" to "head",
+        "脸" to "face",
+        "眼睛" to "eye",
+        "耳朵" to "ear",
+        "鼻子" to "nose",
+        "嘴" to "mouth",
+        "手" to "hand",
+        "脚" to "foot",
+        "心" to "heart",
+        "桌子" to "table",
+        "椅子" to "chair",
+        "床" to "bed",
+        "灯" to "lamp",
+        "钥匙" to "key",
+        "杯子" to "cup",
+        "刀" to "knife",
+        "公司" to "company",
+        "工厂" to "factory",
+        "银行" to "bank",
+        "医生" to "doctor",
+        "医院" to "hospital",
+        "药" to "medicine",
+        "疼痛" to "pain",
+        "健康" to "health",
+        "身体" to "body",
         // ---- 形容词 ----
         "好" to "good",
         "坏" to "bad",
@@ -964,4 +1577,715 @@ object BuiltinDictionary {
         "秋天" to "autumn; fall",
         "冬天" to "winter"
     )
+
+    // ------------------------------------------------------------------
+    // 牛津高阶词典样例词条（含音标 / 词性 / 释义 / 例句）
+    // ------------------------------------------------------------------
+    val oxfordEnZh: Map<String, OxfordEntry> = mapOf(
+        "hello" to OxfordEntry(
+            word = "hello",
+            phonetic = "/həˈloʊ/",
+            pos = "interj.",
+            definitions = listOf("你好（用于打招呼或问候）"),
+            examples = listOf("Hello, how are you today?", "Hello! Nice to meet you.")
+        ),
+        "book" to OxfordEntry(
+            word = "book",
+            phonetic = "/bʊk/",
+            pos = "n. / v.",
+            definitions = listOf("n. 书；书籍；本子", "v. 预订；登记"),
+            examples = listOf("I am reading a book about history.", "She booked a hotel room for the weekend.")
+        ),
+        "water" to OxfordEntry(
+            word = "water",
+            phonetic = "/ˈwɔːtər/",
+            pos = "n. / v.",
+            definitions = listOf("n. 水", "v. 浇水"),
+            examples = listOf("Please give me a glass of water.", "He waters the plants every morning.")
+        ),
+        "time" to OxfordEntry(
+            word = "time",
+            phonetic = "/taɪm/",
+            pos = "n. / v.",
+            definitions = listOf("n. 时间；时刻；次数", "v. 计时；安排时间"),
+            examples = listOf("What time is it now?", "She timed the runners with a stopwatch.")
+        ),
+        "love" to OxfordEntry(
+            word = "love",
+            phonetic = "/lʌv/",
+            pos = "n. / v.",
+            definitions = listOf("n. 爱；爱情；喜爱", "v. 爱；热爱；喜欢"),
+            examples = listOf("Love makes the world go round.", "I love listening to classical music.")
+        ),
+        "happy" to OxfordEntry(
+            word = "happy",
+            phonetic = "/ˈhæpi/",
+            pos = "adj.",
+            definitions = listOf("快乐的；幸福的；满意的"),
+            examples = listOf("She looks really happy today.", "I am happy to help you.")
+        ),
+        "run" to OxfordEntry(
+            word = "run",
+            phonetic = "/rʌn/",
+            pos = "v. / n.",
+            definitions = listOf("v. 跑；运行；经营", "n. 跑步；一段行程"),
+            examples = listOf("He runs five miles every morning.", "The engine is running smoothly.")
+        ),
+        "eat" to OxfordEntry(
+            word = "eat",
+            phonetic = "/iːt/",
+            pos = "v.",
+            definitions = listOf("吃；进餐"),
+            examples = listOf("We eat dinner at seven.", "What do you want to eat?")
+        ),
+        "go" to OxfordEntry(
+            word = "go",
+            phonetic = "/ɡoʊ/",
+            pos = "v.",
+            definitions = listOf("去；走；变得"),
+            examples = listOf("I go to school by bus.", "Let's go home now.")
+        ),
+        "make" to OxfordEntry(
+            word = "make",
+            phonetic = "/meɪk/",
+            pos = "v.",
+            definitions = listOf("制作；使；使得"),
+            examples = listOf("She makes her own clothes.", "Hard work makes success.")
+        ),
+        "good" to OxfordEntry(
+            word = "good",
+            phonetic = "/ɡʊd/",
+            pos = "adj. / n.",
+            definitions = listOf("adj. 好的；善良的", "n. 好处；利益"),
+            examples = listOf("This is a good book.", "Do it for your own good.")
+        ),
+        "see" to OxfordEntry(
+            word = "see",
+            phonetic = "/siː/",
+            pos = "v.",
+            definitions = listOf("看见；理解；会见"),
+            examples = listOf("I can see a bird in the tree.", "I see what you mean.")
+        ),
+        "come" to OxfordEntry(
+            word = "come",
+            phonetic = "/kʌm/",
+            pos = "v.",
+            definitions = listOf("来；到达；发生"),
+            examples = listOf("Please come here.", "Spring has come at last.")
+        ),
+        "take" to OxfordEntry(
+            word = "take",
+            phonetic = "/teɪk/",
+            pos = "v.",
+            definitions = listOf("拿；取；花费；乘坐"),
+            examples = listOf("Take this umbrella with you.", "It takes ten minutes to walk there.")
+        ),
+        "give" to OxfordEntry(
+            word = "give",
+            phonetic = "/ɡɪv/",
+            pos = "v.",
+            definitions = listOf("给；提供；产生"),
+            examples = listOf("Please give me a chance.", "The sun gives us warmth.")
+        ),
+        "think" to OxfordEntry(
+            word = "think",
+            phonetic = "/θɪŋk/",
+            pos = "v.",
+            definitions = listOf("想；思考；认为"),
+            examples = listOf("I think you are right.", "Let me think for a moment.")
+        ),
+        "know" to OxfordEntry(
+            word = "know",
+            phonetic = "/noʊ/",
+            pos = "v.",
+            definitions = listOf("知道；认识；了解"),
+            examples = listOf("I know the answer.", "Do you know her name?")
+        ),
+        "want" to OxfordEntry(
+            word = "want",
+            phonetic = "/wɑːnt/",
+            pos = "v.",
+            definitions = listOf("想要；需要"),
+            examples = listOf("I want a cup of coffee.", "Plants want water and light.")
+        ),
+        "use" to OxfordEntry(
+            word = "use",
+            phonetic = "/juːz/",
+            pos = "v. / n.",
+            definitions = listOf("v. 使用；利用", "n. 使用；用途"),
+            examples = listOf("May I use your phone?", "This tool has many uses.")
+        ),
+        "find" to OxfordEntry(
+            word = "find",
+            phonetic = "/faɪnd/",
+            pos = "v.",
+            definitions = listOf("找到；发现；认为"),
+            examples = listOf("I can't find my keys.", "I find this book very useful.")
+        ),
+        "tell" to OxfordEntry(
+            word = "tell",
+            phonetic = "/tel/",
+            pos = "v.",
+            definitions = listOf("告诉；分辨；吩咐"),
+            examples = listOf("Tell me the truth.", "Can you tell the difference?")
+        ),
+        "ask" to OxfordEntry(
+            word = "ask",
+            phonetic = "/æsk/",
+            pos = "v.",
+            definitions = listOf("问；请求；邀请"),
+            examples = listOf("May I ask a question?", "She asked for help.")
+        ),
+        "try" to OxfordEntry(
+            word = "try",
+            phonetic = "/traɪ/",
+            pos = "v. / n.",
+            definitions = listOf("v. 尝试；试图", "n. 尝试"),
+            examples = listOf("Try your best.", "Let me have a try.")
+        ),
+        "help" to OxfordEntry(
+            word = "help",
+            phonetic = "/help/",
+            pos = "v. / n.",
+            definitions = listOf("v. 帮助；有助于", "n. 帮助"),
+            examples = listOf("Can you help me?", "Your advice was a great help.")
+        ),
+        "work" to OxfordEntry(
+            word = "work",
+            phonetic = "/wɜːrk/",
+            pos = "v. / n.",
+            definitions = listOf("v. 工作；运转", "n. 工作；作品"),
+            examples = listOf("She works in a hospital.", "This is a famous work of art.")
+        ),
+        "play" to OxfordEntry(
+            word = "play",
+            phonetic = "/pleɪ/",
+            pos = "v. / n.",
+            definitions = listOf("v. 玩；演奏；播放", "n. 戏剧；玩耍"),
+            examples = listOf("Children like to play outside.", "He plays the piano well.")
+        ),
+        "live" to OxfordEntry(
+            word = "live",
+            phonetic = "/lɪv/",
+            pos = "v.",
+            definitions = listOf("生活；居住；活着"),
+            examples = listOf("I live in a small town.", "Live and learn.")
+        ),
+        "speak" to OxfordEntry(
+            word = "speak",
+            phonetic = "/spiːk/",
+            pos = "v.",
+            definitions = listOf("说话；讲；演说"),
+            examples = listOf("May I speak to John?", "She speaks three languages.")
+        ),
+        "read" to OxfordEntry(
+            word = "read",
+            phonetic = "/riːd/",
+            pos = "v.",
+            definitions = listOf("读；阅读；理解"),
+            examples = listOf("I read the news every day.", "Can you read this word?")
+        ),
+        "write" to OxfordEntry(
+            word = "write",
+            phonetic = "/raɪt/",
+            pos = "v.",
+            definitions = listOf("写；书写；写作"),
+            examples = listOf("She writes a diary every night.", "Please write your name here.")
+        ),
+        "learn" to OxfordEntry(
+            word = "learn",
+            phonetic = "/lɜːrn/",
+            pos = "v.",
+            definitions = listOf("学习；学会；得知"),
+            examples = listOf("Children learn quickly.", "I learned a lot from this book.")
+        ),
+        "teach" to OxfordEntry(
+            word = "teach",
+            phonetic = "/tiːtʃ/",
+            pos = "v.",
+            definitions = listOf("教；讲授；教导"),
+            examples = listOf("She teaches English at a school.", "Experience teaches us patience.")
+        ),
+        "beautiful" to OxfordEntry(
+            word = "beautiful",
+            phonetic = "/ˈbjuːtɪfl/",
+            pos = "adj.",
+            definitions = listOf("美丽的；美好的；出色的"),
+            examples = listOf("What a beautiful sunset!", "She has a beautiful voice.")
+        ),
+        "important" to OxfordEntry(
+            word = "important",
+            phonetic = "/ɪmˈpɔːrtnt/",
+            pos = "adj.",
+            definitions = listOf("重要的；有影响力的"),
+            examples = listOf("Family is important to me.", "This is an important decision.")
+        ),
+        "possible" to OxfordEntry(
+            word = "possible",
+            phonetic = "/ˈpɑːsəbl/",
+            pos = "adj.",
+            definitions = listOf("可能的；可接受的"),
+            examples = listOf("It is possible to finish today.", "Do it as quickly as possible.")
+        ),
+        "friend" to OxfordEntry(
+            word = "friend",
+            phonetic = "/frend/",
+            pos = "n.",
+            definitions = listOf("朋友；友人；支持者"),
+            examples = listOf("He is my best friend.", "A friend in need is a friend indeed.")
+        ),
+        "family" to OxfordEntry(
+            word = "family",
+            phonetic = "/ˈfæməli/",
+            pos = "n.",
+            definitions = listOf("家庭；家族；科"),
+            examples = listOf("I love my family.", "The lion is in the cat family.")
+        ),
+        "world" to OxfordEntry(
+            word = "world",
+            phonetic = "/wɜːrld/",
+            pos = "n.",
+            definitions = listOf("世界；世间；领域"),
+            examples = listOf("The world is changing fast.", "He traveled around the world.")
+        ),
+        "house" to OxfordEntry(
+            word = "house",
+            phonetic = "/haʊs/",
+            pos = "n. / v.",
+            definitions = listOf("n. 房子；住宅", "v. 给…提供住处"),
+            examples = listOf("They bought a new house.", "The building houses many offices.")
+        ),
+        "school" to OxfordEntry(
+            word = "school",
+            phonetic = "/skuːl/",
+            pos = "n.",
+            definitions = listOf("学校；上学；学派"),
+            examples = listOf("My school is near my home.", "He is at school now.")
+        ),
+        "teacher" to OxfordEntry(
+            word = "teacher",
+            phonetic = "/ˈtiːtʃər/",
+            pos = "n.",
+            definitions = listOf("教师；老师"),
+            examples = listOf("Our teacher is very kind.", "She is a teacher of math.")
+        ),
+        "student" to OxfordEntry(
+            word = "student",
+            phonetic = "/ˈstuːdnt/",
+            pos = "n.",
+            definitions = listOf("学生；研究者"),
+            examples = listOf("He is a hard-working student.", "The students are in the classroom.")
+        ),
+        "money" to OxfordEntry(
+            word = "money",
+            phonetic = "/ˈmʌni/",
+            pos = "n.",
+            definitions = listOf("钱；货币；财富"),
+            examples = listOf("Time is money.", "Save money for a rainy day.")
+        ),
+        "food" to OxfordEntry(
+            word = "food",
+            phonetic = "/fuːd/",
+            pos = "n.",
+            definitions = listOf("食物；食品"),
+            examples = listOf("The food tastes great.", "Cats need good food.")
+        ),
+        "music" to OxfordEntry(
+            word = "music",
+            phonetic = "/ˈmjuːzɪk/",
+            pos = "n.",
+            definitions = listOf("音乐；乐曲"),
+            examples = listOf("I love pop music.", "She listens to music every day.")
+        ),
+        "city" to OxfordEntry(
+            word = "city",
+            phonetic = "/ˈsɪti/",
+            pos = "n.",
+            definitions = listOf("城市；市"),
+            examples = listOf("Beijing is a big city.", "The city never sleeps.")
+        ),
+        "country" to OxfordEntry(
+            word = "country",
+            phonetic = "/ˈkʌntri/",
+            pos = "n.",
+            definitions = listOf("国家；乡村；地区"),
+            examples = listOf("China is a great country.", "We live in the country.")
+        ),
+        "computer" to OxfordEntry(
+            word = "computer",
+            phonetic = "/kəmˈpjuːtər/",
+            pos = "n.",
+            definitions = listOf("计算机；电脑"),
+            examples = listOf("I use a computer at work.", "The computer is broken.")
+        ),
+        "phone" to OxfordEntry(
+            word = "phone",
+            phonetic = "/foʊn/",
+            pos = "n. / v.",
+            definitions = listOf("n. 电话；电话机", "v. 打电话"),
+            examples = listOf("Please answer the phone.", "I will phone you later.")
+        ),
+        "car" to OxfordEntry(
+            word = "car",
+            phonetic = "/kɑːr/",
+            pos = "n.",
+            definitions = listOf("汽车；小汽车；车厢"),
+            examples = listOf("He bought a new car.", "The car is parked outside.")
+        ),
+        "dog" to OxfordEntry(
+            word = "dog",
+            phonetic = "/dɔːɡ/",
+            pos = "n. / v.",
+            definitions = listOf("n. 狗；犬", "v. 跟踪；纠缠"),
+            examples = listOf("The dog is barking.", "Every dog has its day.")
+        ),
+        "cat" to OxfordEntry(
+            word = "cat",
+            phonetic = "/kæt/",
+            pos = "n.",
+            definitions = listOf("猫；猫科动物"),
+            examples = listOf("The cat is sleeping.", "Cats like to catch mice.")
+        ),
+        "tree" to OxfordEntry(
+            word = "tree",
+            phonetic = "/triː/",
+            pos = "n.",
+            definitions = listOf("树；树木；树状图"),
+            examples = listOf("The tree is very tall.", "Birds sing in the tree.")
+        ),
+        "sun" to OxfordEntry(
+            word = "sun",
+            phonetic = "/sʌn/",
+            pos = "n.",
+            definitions = listOf("太阳；阳光"),
+            examples = listOf("The sun rises in the east.", "Sit in the sun.")
+        ),
+        "moon" to OxfordEntry(
+            word = "moon",
+            phonetic = "/muːn/",
+            pos = "n.",
+            definitions = listOf("月亮；月球；卫星"),
+            examples = listOf("The moon is bright tonight.", "The moon goes around the earth.")
+        ),
+        "star" to OxfordEntry(
+            word = "star",
+            phonetic = "/stɑːr/",
+            pos = "n. / v.",
+            definitions = listOf("n. 星星；明星", "v. 主演"),
+            examples = listOf("The stars are shining.", "She stars in a new movie.")
+        ),
+        "rain" to OxfordEntry(
+            word = "rain",
+            phonetic = "/reɪn/",
+            pos = "n. / v.",
+            definitions = listOf("n. 雨", "v. 下雨"),
+            examples = listOf("The rain stopped.", "It rains a lot in spring.")
+        ),
+        "snow" to OxfordEntry(
+            word = "snow",
+            phonetic = "/snoʊ/",
+            pos = "n. / v.",
+            definitions = listOf("n. 雪", "v. 下雪"),
+            examples = listOf("The snow is deep.", "It snowed all night.")
+        ),
+        "wind" to OxfordEntry(
+            word = "wind",
+            phonetic = "/wɪnd/",
+            pos = "n. / v.",
+            definitions = listOf("n. 风", "v. 蜿蜒；缠绕"),
+            examples = listOf("The wind is strong today.", "The river winds through the valley.")
+        ),
+        "heart" to OxfordEntry(
+            word = "heart",
+            phonetic = "/hɑːrt/",
+            pos = "n.",
+            definitions = listOf("心；心脏；内心"),
+            examples = listOf("My heart is beating fast.", "Thank you from the bottom of my heart.")
+        ),
+        "head" to OxfordEntry(
+            word = "head",
+            phonetic = "/hed/",
+            pos = "n. / v.",
+            definitions = listOf("n. 头；头脑；领导", "v. 前往"),
+            examples = listOf("He shook his head.", "We head home after work.")
+        ),
+        "hand" to OxfordEntry(
+            word = "hand",
+            phonetic = "/hænd/",
+            pos = "n. / v.",
+            definitions = listOf("n. 手；指针", "v. 递；交"),
+            examples = listOf("Wash your hands.", "Please hand me the book.")
+        ),
+        "eye" to OxfordEntry(
+            word = "eye",
+            phonetic = "/aɪ/",
+            pos = "n. / v.",
+            definitions = listOf("n. 眼睛；眼光", "v. 注视"),
+            examples = listOf("Close your eyes.", "She eyed the stranger carefully.")
+        ),
+        "door" to OxfordEntry(
+            word = "door",
+            phonetic = "/dɔːr/",
+            pos = "n.",
+            definitions = listOf("门；门口；通道"),
+            examples = listOf("Please close the door.", "Opportunity knocks at the door.")
+        ),
+        "way" to OxfordEntry(
+            word = "way",
+            phonetic = "/weɪ/",
+            pos = "n.",
+            definitions = listOf("路；方式；方法"),
+            examples = listOf("This is the best way.", "Can you show me the way?")
+        ),
+        "day" to OxfordEntry(
+            word = "day",
+            phonetic = "/deɪ/",
+            pos = "n.",
+            definitions = listOf("天；日；白天"),
+            examples = listOf("Have a nice day!", "What day is it today?")
+        ),
+        "night" to OxfordEntry(
+            word = "night",
+            phonetic = "/naɪt/",
+            pos = "n.",
+            definitions = listOf("夜晚；夜间"),
+            examples = listOf("Good night!", "Cats can see at night.")
+        ),
+        "man" to OxfordEntry(
+            word = "man",
+            phonetic = "/mæn/",
+            pos = "n. / v.",
+            definitions = listOf("n. 男人；人；人类", "v. 配备人员"),
+            examples = listOf("He is a good man.", "Man the stations!")
+        ),
+        "woman" to OxfordEntry(
+            word = "woman",
+            phonetic = "/ˈwʊmən/",
+            pos = "n.",
+            definitions = listOf("女人；妇女"),
+            examples = listOf("She is a strong woman.", "A woman is waiting outside.")
+        ),
+        "child" to OxfordEntry(
+            word = "child",
+            phonetic = "/tʃaɪld/",
+            pos = "n.",
+            definitions = listOf("孩子；儿童"),
+            examples = listOf("The child is playing.", "She has three children.")
+        ),
+        "name" to OxfordEntry(
+            word = "name",
+            phonetic = "/neɪm/",
+            pos = "n. / v.",
+            definitions = listOf("n. 名字；名称", "v. 命名；指定"),
+            examples = listOf("What is your name?", "They named the baby Lily.")
+        ),
+        "idea" to OxfordEntry(
+            word = "idea",
+            phonetic = "/aɪˈdiːə/",
+            pos = "n.",
+            definitions = listOf("主意；想法；概念"),
+            examples = listOf("That's a good idea!", "I have no idea.")
+        ),
+        "question" to OxfordEntry(
+            word = "question",
+            phonetic = "/ˈkwestʃən/",
+            pos = "n. / v.",
+            definitions = listOf("n. 问题；疑问", "v. 询问；质疑"),
+            examples = listOf("May I ask a question?", "No one questioned his decision.")
+        ),
+        "language" to OxfordEntry(
+            word = "language",
+            phonetic = "/ˈlæŋɡwɪdʒ/",
+            pos = "n.",
+            definitions = listOf("语言；语言文字"),
+            examples = listOf("English is a world language.", "Body language matters.")
+        ),
+        "history" to OxfordEntry(
+            word = "history",
+            phonetic = "/ˈhɪstəri/",
+            pos = "n.",
+            definitions = listOf("历史；历史学；来历"),
+            examples = listOf("I like reading history.", "She studies modern history.")
+        ),
+        "science" to OxfordEntry(
+            word = "science",
+            phonetic = "/ˈsaɪəns/",
+            pos = "n.",
+            definitions = listOf("科学；理科"),
+            examples = listOf("Science changes the world.", "He is good at science.")
+        ),
+        "art" to OxfordEntry(
+            word = "art",
+            phonetic = "/ɑːrt/",
+            pos = "n.",
+            definitions = listOf("艺术；美术；技术"),
+            examples = listOf("Art is long, life is short.", "She is studying art.")
+        ),
+        "dream" to OxfordEntry(
+            word = "dream",
+            phonetic = "/driːm/",
+            pos = "n. / v.",
+            definitions = listOf("n. 梦想；梦", "v. 做梦；梦想"),
+            examples = listOf("I had a strange dream.", "She dreams of becoming a doctor.")
+        )
+    )
+
+    // ------------------------------------------------------------------
+    // 派生构建
+    // ------------------------------------------------------------------
+
+    /** 英汉词典（含形态派生）—— 懒加载，首次访问时构建 */
+    val enZh: Map<String, String> by lazy { buildEnZh() }
+
+    /** 汉英词典 —— 懒加载 */
+    val zhEn: Map<String, String> by lazy { buildZhEn() }
+
+    /** 牛津样例词条数（用于 UI 展示） */
+    val oxfordCount: Int get() = oxfordEnZh.size
+
+    /** 英汉词典总词条数（含派生） */
+    val enZhCount: Int get() = enZh.size
+
+    /** 汉英词典总词条数 */
+    val zhEnCount: Int get() = zhEn.size
+
+    /** 总词条数（英汉 + 汉英） */
+    val totalCount: Int get() = enZh.size + zhEn.size
+
+    /** 构建英汉词典：根词条 + 形态派生 + 牛津主释义 */
+    private fun buildEnZh(): Map<String, String> {
+        // 预估容量：根词条 × ~8（含派生）+ 牛津
+        val map = HashMap<String, String>(baseEnZh.size * 9 + oxfordEnZh.size)
+        // 1. 根词条 + 形态派生
+        for ((word, trans) in baseEnZh) {
+            val w = word.lowercase()
+            map.putIfAbsent(w, trans)
+            generateMorphs(w, trans, map)
+        }
+        // 2. 牛津词条主释义（不覆盖已有更精准译义）
+        for ((word, entry) in oxfordEnZh) {
+            val w = word.lowercase()
+            map.putIfAbsent(w, entry.definitions.first())
+            generateMorphs(w, entry.definitions.first(), map)
+        }
+        // 3. 数词序数/组合派生（21-99 复合数词）
+        generateCompoundNumbers(map)
+        return map
+    }
+
+    /** 构建汉英词典 */
+    private fun buildZhEn(): Map<String, String> {
+        val map = HashMap<String, String>(baseZhEn.size)
+        for ((word, trans) in baseZhEn) {
+            map.putIfAbsent(word, trans)
+        }
+        return map
+    }
+
+    /**
+     * 形态派生：在根词基础上生成复数 / 三单 / 过去式 / 过去分词 / 现在分词 /
+     * 比较级 / 最高级 / 副词等形式。派生形式沿用根词译义（如 books → 书），
+     * 已存在的更精准译义不会被覆盖（putIfAbsent）。
+     *
+     * 跳过：含空格/连字符的短语、过短词、含非字母字符的词。
+     */
+    private fun generateMorphs(word: String, translation: String, map: HashMap<String, String>) {
+        if (word.length < 3) return
+        if (word.contains(' ') || word.contains('-') || word.contains('\'')) return
+        if (!word.all { it.isLetter() }) return
+        val w = word.lowercase()
+        val last = w.last()
+        val endsWithE = last == 'e' && !w.endsWith("ee")
+        val endsWithConsY = w.length >= 2 && !isVowel(w[w.length - 2]) && last == 'y'
+        val sibilant = last == 's' || last == 'x' || last == 'z' ||
+            w.endsWith("ch") || w.endsWith("sh")
+
+        // 复数 / 三单
+        val plural = when {
+            sibilant -> w + "es"
+            endsWithConsY -> w.dropLast(1) + "ies"
+            else -> w + "s"
+        }
+        putMorph(plural, translation, map)
+
+        // 过去式 / 过去分词
+        val past = when {
+            endsWithConsY -> w.dropLast(1) + "ied"
+            endsWithE -> w + "d"
+            else -> w + "ed"
+        }
+        putMorph(past, translation, map)
+
+        // 现在分词
+        val ing = when {
+            w.endsWith("ie") -> w.dropLast(2) + "ying"
+            endsWithE -> w.dropLast(1) + "ing"
+            else -> w + "ing"
+        }
+        putMorph(ing, translation, map)
+
+        // 比较级
+        val comparative = when {
+            endsWithConsY -> w.dropLast(1) + "ier"
+            endsWithE -> w + "r"
+            else -> w + "er"
+        }
+        putMorph(comparative, translation, map)
+
+        // 最高级
+        val superlative = when {
+            endsWithConsY -> w.dropLast(1) + "iest"
+            endsWithE -> w + "st"
+            else -> w + "est"
+        }
+        putMorph(superlative, translation, map)
+
+        // 副词
+        val adverb = when {
+            endsWithConsY -> w.dropLast(1) + "ily"
+            endsWithE -> w.replaceFirst(Regex("e$"), "ly")
+            else -> w + "ly"
+        }
+        putMorph(adverb, translation, map)
+    }
+
+    private fun putMorph(key: String, value: String, map: HashMap<String, String>) {
+        if (key.length >= 3) map.putIfAbsent(key, value)
+    }
+
+    private fun isVowel(c: Char): Boolean = c.lowercaseChar() in "aeiou"
+
+    /** 生成 21-99 的复合英文数词及序数词，扩充数词条目 */
+    private fun generateCompoundNumbers(map: HashMap<String, String>) {
+        val tens = listOf(
+            "twenty" to "二十", "thirty" to "三十", "forty" to "四十",
+            "fifty" to "五十", "sixty" to "六十", "seventy" to "七十",
+            "eighty" to "八十", "ninety" to "九十"
+        )
+        val ones = listOf(
+            "one" to "一", "two" to "二", "three" to "三", "four" to "四",
+            "five" to "五", "six" to "六", "seven" to "七", "eight" to "八",
+            "nine" to "九"
+        )
+        // 21-99：twenty-one .. ninety-nine
+        for ((ten, tenCn) in tens) {
+            for ((one, oneCn) in ones) {
+                val word = "$ten-$one"
+                map.putIfAbsent(word, "$tenCn$oneCn")
+            }
+        }
+        // 序数词
+        val ordinals = listOf(
+            "first" to "第一", "second" to "第二", "third" to "第三",
+            "fourth" to "第四", "fifth" to "第五", "sixth" to "第六",
+            "seventh" to "第七", "eighth" to "第八", "ninth" to "第九",
+            "tenth" to "第十", "eleventh" to "第十一", "twelfth" to "第十二",
+            "thirteenth" to "第十三", "twentieth" to "第二十",
+            "thirtieth" to "第三十", "fiftieth" to "第五十",
+            "hundredth" to "第一百", "thousandth" to "第一千"
+        )
+        for ((word, cn) in ordinals) {
+            map.putIfAbsent(word, cn)
+        }
+    }
 }

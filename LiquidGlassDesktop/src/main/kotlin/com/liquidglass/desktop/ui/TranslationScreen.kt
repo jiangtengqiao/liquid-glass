@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liquidglass.desktop.system.LanguagePack
+import com.liquidglass.desktop.system.LoginManager
 import com.liquidglass.desktop.system.MemberTier
 import com.liquidglass.desktop.system.TranslateLanguage
 import com.liquidglass.desktop.system.TranslationHistory
@@ -155,7 +156,10 @@ private fun TranslateTab(manager: TranslationManager, scope: kotlinx.coroutines.
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "今日已用: ${usage.used} / ${usage.quota} 字 · ${manager.currentTier().display}",
+                text = "今日已用: " +
+                    if (usage.unlimited) "${usage.used} 字 · 无限额度"
+                    else "${usage.used} / ${usage.quota} 字 · 剩余 ${usage.remaining}" +
+                    " · ${manager.currentTier().display}",
                 color = LiquidGlassTheme.onSurfaceMuted,
                 fontSize = 12.sp
             )
@@ -379,7 +383,8 @@ private fun HistoryTab(manager: TranslationManager) {
 private fun PacksTab(manager: TranslationManager, scope: kotlinx.coroutines.CoroutineScope) {
     var packs by remember { mutableStateOf<List<LanguagePack>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    val downloading = remember { androidx.compose.runtime.mutableStateMapOf<String, String>() }
+    val downloading = remember { androidx.compose.runtime.mutableStateMapOf<String, com.liquidglass.desktop.system.DownloadProgress>() }
+    val logExpanded = remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
     val tier = manager.currentTier()
 
     LaunchedEffect(Unit) {
@@ -398,15 +403,13 @@ private fun PacksTab(manager: TranslationManager, scope: kotlinx.coroutines.Coro
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "下载后可在无网络环境下翻译单词与短语。" +
-                    if (tier.canUseOfflinePack()) "当前等级可用。"
-                    else "免费版不可用，请升级至专业版或以上。",
+                text = "下载后可在无网络环境下翻译单词与短语。多镜像源（jsDelivr / GitHub raw / gh-proxy / ghfast）自动切换，热门包对所有用户免费。",
                 color = LiquidGlassTheme.onSurfaceMuted,
                 fontSize = 12.sp
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "已安装: ${packs.count { it.installed }} / ${packs.size}",
+                text = "当前等级: ${tier.display} · 已安装 ${packs.count { it.installed }} / ${packs.size}",
                 color = LiquidGlassTheme.accentSecondary,
                 fontSize = 12.sp
             )
@@ -423,24 +426,102 @@ private fun PacksTab(manager: TranslationManager, scope: kotlinx.coroutines.Coro
                 GlassCard(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = pack.name,
-                                color = LiquidGlassTheme.onSurfaceColor,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = pack.name,
+                                    color = LiquidGlassTheme.onSurfaceColor,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                // 分级标签
+                                val (labelText, labelColor) = when {
+                                    pack.hot -> "热门免费" to LiquidGlassTheme.green
+                                    pack.premium -> "高级" to LiquidGlassTheme.gold
+                                    else -> "标准" to LiquidGlassTheme.accentSecondary
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(labelColor.copy(alpha = 0.25f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(labelText, color = labelColor, fontSize = 10.sp)
+                                }
+                            }
                             Spacer(Modifier.height(2.dp))
                             val info = buildString {
                                 append("${pack.fromCode.uppercase()} → ${pack.toCode.uppercase()}")
                                 if (pack.entryCount > 0) append(" · ${pack.entryCount} 词条")
                                 if (pack.sizeBytes > 0) append(" · ${formatSize(pack.sizeBytes)}")
-                                if (pack.premium) append(" · 高级")
                                 if (pack.installed) append(" · 已安装")
                             }
                             Text(info, color = LiquidGlassTheme.onSurfaceMuted, fontSize = 11.sp)
-                            downloading[key]?.let { msg ->
+
+                            // 下载进度
+                            downloading[key]?.let { p ->
+                                Spacer(Modifier.height(6.dp))
+                                // 进度条
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(LiquidGlassTheme.surfaceVariant)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth((p.percent / 100f).coerceIn(0f, 1f))
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(
+                                                when {
+                                                    p.failed -> LiquidGlassTheme.announcementHigh
+                                                    p.finished -> LiquidGlassTheme.green
+                                                    else -> LiquidGlassTheme.accentSecondary
+                                                }
+                                            )
+                                    )
+                                }
                                 Spacer(Modifier.height(4.dp))
-                                Text(msg, color = LiquidGlassTheme.accentSecondary, fontSize = 11.sp)
+                                Text(
+                                    text = buildString {
+                                        append("镜像: ${p.mirrorName}（${p.mirrorIndex + 1}/${p.mirrorCount}）")
+                                        if (!p.finished && !p.failed) {
+                                            append(" · ${p.percent}%")
+                                            append(" · ${p.downloadedText}")
+                                            if (p.total > 0) append(" / ${p.totalText}")
+                                            append(" · ${p.speedText}")
+                                        }
+                                    },
+                                    color = if (p.failed) LiquidGlassTheme.announcementHigh
+                                    else if (p.finished) LiquidGlassTheme.green
+                                    else LiquidGlassTheme.accentSecondary,
+                                    fontSize = 11.sp
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                // 日志展开/隐藏
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .clickable { logExpanded[key] = !(logExpanded[key] ?: false) }
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = if (logExpanded[key] == true) "▾ 隐藏日志" else "▸ 下载日志",
+                                        color = LiquidGlassTheme.onSurfaceMuted,
+                                        fontSize = 10.sp
+                                    )
+                                }
+                                if (logExpanded[key] == true) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = p.log,
+                                        color = LiquidGlassTheme.onSurfaceMuted,
+                                        fontSize = 10.sp
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.width(8.dp))
@@ -450,26 +531,30 @@ private fun PacksTab(manager: TranslationManager, scope: kotlinx.coroutines.Coro
                                 scope.launch { packs = manager.availablePacks() }
                             }) { Text("删除") }
                         } else {
-                            val canDownload = tier.canUseOfflinePack() &&
-                                (!pack.premium || tier.canDownloadPremiumPacks())
+                            val canDownload = tier.canDownloadPack(pack)
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        downloading[key] = "下载中..."
-                                        val ok = manager.downloadPack(pack) { d, t ->
-                                            downloading[key] = if (t > 0)
-                                                "下载中: ${formatSize(d)} / ${formatSize(t)}"
-                                            else "下载中: ${formatSize(d)}"
+                                        val ok = manager.downloadPack(pack) { p ->
+                                            downloading[key] = p
                                         }
-                                        downloading.remove(key)
-                                        if (ok) packs = manager.availablePacks()
+                                        if (ok) {
+                                            packs = manager.availablePacks()
+                                            // 保留 finished 状态短暂展示后清除
+                                        }
                                     }
                                 },
-                                enabled = canDownload
+                                enabled = canDownload && !downloading.containsKey(key)
                             ) {
-                                Text(if (pack.premium && tier != MemberTier.Premium) "需高级版"
-                                    else if (!tier.canUseOfflinePack()) "需专业版"
-                                    else "下载")
+                                Text(
+                                    when {
+                                        downloading.containsKey(key) -> "下载中"
+                                        pack.hot -> "免费下载"
+                                        pack.premium && tier != MemberTier.Premium -> "需高级版"
+                                        tier == MemberTier.Free -> "需专业版"
+                                        else -> "下载"
+                                    }
+                                )
                             }
                         }
                     }
@@ -491,45 +576,91 @@ private fun MembershipTab(manager: TranslationManager, scope: kotlinx.coroutines
     var generatedPrem by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        // 平台账号状态
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Text("平台账号", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+            Spacer(Modifier.height(4.dp))
+            val user = LoginManager.currentUser()
+            if (user != null) {
+                Text(
+                    text = user.username,
+                    color = LiquidGlassTheme.onSurfaceColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "会员等级: ${user.membership.label}" +
+                        (if (user.expireAt > 0L)
+                            " · 到期 ${formatTime(user.expireAt)}" else " · 永久"),
+                    color = LiquidGlassTheme.onSurfaceMuted,
+                    fontSize = 11.sp
+                )
+            } else {
+                Text(
+                    text = "未登录",
+                    color = LiquidGlassTheme.announcementMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "会员等级由平台账号决定，未登录按免费版处理。请前往「账号」页登录。",
+                    color = LiquidGlassTheme.onSurfaceMuted,
+                    fontSize = 11.sp
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
         // 当前等级
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Text("当前等级", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+            Text("当前翻译等级", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
             Spacer(Modifier.height(4.dp))
             Text(
                 text = tier.display,
-                color = LiquidGlassTheme.accentSecondary,
+                color = if (tier == MemberTier.Premium) LiquidGlassTheme.gold
+                else LiquidGlassTheme.accentSecondary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
-            // 用量进度
-            val percent = if (usage.quota > 0) usage.used.toFloat() / usage.quota else 0f
-            Text("今日用量", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
-            Spacer(Modifier.height(4.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(LiquidGlassTheme.surfaceVariant)
-            ) {
+            // 用量进度（无限会员不显示进度条）
+            if (usage.unlimited) {
+                Text(
+                    text = "无限额度 · 今日已翻译 ${usage.used} 字",
+                    color = LiquidGlassTheme.green,
+                    fontSize = 12.sp
+                )
+            } else {
+                val percent = if (usage.quota > 0) usage.used.toFloat() / usage.quota else 0f
+                Text("今日用量", color = LiquidGlassTheme.onSurfaceMuted, fontSize = 12.sp)
+                Spacer(Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(percent.coerceIn(0f, 1f))
+                        .fillMaxWidth()
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            if (percent > 0.9f) LiquidGlassTheme.announcementHigh
-                            else LiquidGlassTheme.accentSecondary
-                        )
+                        .background(LiquidGlassTheme.surfaceVariant)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(percent.coerceIn(0f, 1f))
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (percent > 0.9f) LiquidGlassTheme.announcementHigh
+                                else LiquidGlassTheme.accentSecondary
+                            )
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${usage.used} / ${usage.quota} 字 (剩余 ${usage.remaining})",
+                    color = LiquidGlassTheme.onSurfaceMuted,
+                    fontSize = 11.sp
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "${usage.used} / ${usage.quota} 字 (剩余 ${usage.remaining})",
-                color = LiquidGlassTheme.onSurfaceMuted,
-                fontSize = 11.sp
-            )
         }
         Spacer(Modifier.height(12.dp))
 
@@ -563,8 +694,12 @@ private fun MembershipTab(manager: TranslationManager, scope: kotlinx.coroutines
                             }
                         }
                         Text(
-                            text = "每日额度 ${t.dailyQuota} 字 · 文章上限 ${t.maxArticleChars} 字" +
-                                (if (t.canUseOfflinePack()) " · 离线包" else "") +
+                            text = "每日额度 ${t.dailyQuotaText} · 单次上限 ${t.maxArticleCharsText}" +
+                                " · 离线包" + when {
+                                    t == MemberTier.Premium -> "（全部）"
+                                    t == MemberTier.Pro -> "（标准+热门）"
+                                    else -> "（仅热门）"
+                                } +
                                 (if (t.canTranslateArticle()) " · 文章翻译" else "") +
                                 (if (t.canDownloadPremiumPacks()) " · 高级语言包" else ""),
                             color = LiquidGlassTheme.onSurfaceMuted,
@@ -577,12 +712,12 @@ private fun MembershipTab(manager: TranslationManager, scope: kotlinx.coroutines
         }
         Spacer(Modifier.height(12.dp))
 
-        // 激活码输入
+        // 激活码输入（离线演示用；正式会员等级以平台账号为准）
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Text("激活会员", color = LiquidGlassTheme.onSurfaceColor, fontWeight = FontWeight.Bold)
+            Text("激活码（离线演示）", color = LiquidGlassTheme.onSurfaceColor, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "输入激活码升级会员等级",
+                text = "正式会员等级由平台账号决定。下方激活码仅供离线演示/内测分发使用，登录平台账号后生效优先级以账号为准。",
                 color = LiquidGlassTheme.onSurfaceMuted,
                 fontSize = 12.sp
             )
@@ -603,22 +738,14 @@ private fun MembershipTab(manager: TranslationManager, scope: kotlinx.coroutines
                 Button(
                     onClick = {
                         val ok = manager.activateTier(code, MemberTier.Pro)
-                        if (ok) {
+                        val ok2 = !ok && manager.activateTier(code, MemberTier.Premium)
+                        if (ok || ok2) {
                             tier = manager.currentTier()
                             usage = manager.todayUsage()
-                            message = "已激活专业版"
+                            message = "激活码已保存（本地演示）。当前生效等级以平台账号为准：${tier.display}"
                             code = ""
                         } else {
-                            // 尝试 Premium
-                            val ok2 = manager.activateTier(code, MemberTier.Premium)
-                            if (ok2) {
-                                tier = manager.currentTier()
-                                usage = manager.todayUsage()
-                                message = "已激活高级版"
-                                code = ""
-                            } else {
-                                message = "激活码无效（专业版需 LG-PRO- 前缀，高级版需 LG-PREM- 前缀）"
-                            }
+                            message = "激活码无效（专业版需 LG-PRO- 前缀，高级版需 LG-PREM- 前缀）"
                         }
                     },
                     enabled = code.isNotBlank(),

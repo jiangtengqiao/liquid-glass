@@ -45,6 +45,26 @@ data class BetaInfo(
     val fileName: String
 )
 
+/** Beta 先锋申请表单（昵称 / 邮箱 / 使用场景 / 加入理由） */
+data class BetaApplication(
+    val nickname: String,
+    val email: String,
+    val useCase: String,
+    val reason: String,
+    val submittedAt: Long
+)
+
+/** Beta 申请状态 */
+enum class BetaStatus { NOT_APPLIED, APPLIED, APPROVED }
+
+/** Beta 用户反馈（bug 报告 / 功能建议 / 其他） */
+data class BetaFeedback(
+    val type: String,
+    val content: String,
+    val contact: String,
+    val createdAt: Long
+)
+
 /**
  * Beta 先锋码管理器（Desktop 版本）
  *
@@ -54,6 +74,12 @@ data class BetaInfo(
  * - SecureRandom 生成 17-25 位先锋码 + 校验位
  * - 账户检测（Desktop 用 Preferences 存）
  * - 验证先锋码后拉取 beta-version.json
+ *
+ * v2.11.0 扩展：
+ * - Beta 先锋申请表单（本地持久化 + 可选 GitHub Issue 提交）
+ * - Beta 通道说明 / 状态徽章
+ * - Beta 版本日志（从 version.json 读取 releaseNotes）
+ * - Beta 用户反馈（保存到本地文件）
  *
  * 网络请求使用 Java 原生 HttpURLConnection，避免引入 OkHttp 依赖。
  */
@@ -345,6 +371,211 @@ class BetaPioneerManager {
         } catch (_: Exception) { false }
     }
 
+    // ===================== Beta 先锋申请 / 反馈 / 版本日志 =====================
+
+    /**
+     * 提交 Beta 先锋申请表单。
+     *
+     * 保存到本地 Preferences（状态置为 APPLIED）；若配置了 GitHub Token，
+     * 则尝试通过 GitHub Issues API 远程提交，否则跳过远程提交。
+     *
+     * 网络请求在 IO 调度器执行，调用方应在协程中调用。
+     *
+     * @return 状态文案（用于 UI 提示）
+     */
+    suspend fun submitApplication(form: BetaApplication): String = withContext(Dispatchers.IO) {
+        // 本地保存
+        prefs.put(KEY_APP_NICKNAME, form.nickname)
+        prefs.put(KEY_APP_EMAIL, form.email)
+        prefs.put(KEY_APP_USECASE, form.useCase)
+        prefs.put(KEY_APP_REASON, form.reason)
+        prefs.putLong(KEY_APP_SUBMITTED_AT, form.submittedAt)
+        prefs.put(KEY_APP_STATUS, BetaStatus.APPLIED.name)
+        prefs.flush()
+
+        // 可选远程提交
+        val token = getGithubToken()
+        if (token.isBlank()) {
+            "申请已保存到本地（未配置 GitHub Token，远程提交已跳过）"
+        } else {
+            val remote = submitApplicationToGithub(form, token)
+            if (remote) "申请已保存并提交到 GitHub Issue"
+            else "申请已保存到本地，GitHub 远程提交失败"
+        }
+    }
+
+    /** 读取已保存的申请表单（无则 null） */
+    fun loadApplication(): BetaApplication? {
+        val nickname = prefs.get(KEY_APP_NICKNAME, null) ?: return null
+        return BetaApplication(
+            nickname = nickname,
+            email = prefs.get(KEY_APP_EMAIL, ""),
+            useCase = prefs.get(KEY_APP_USECASE, ""),
+            reason = prefs.get(KEY_APP_REASON, ""),
+            submittedAt = prefs.getLong(KEY_APP_SUBMITTED_AT, 0L)
+        )
+    }
+
+    /** 当前申请状态 */
+    fun applicationStatus(): BetaStatus {
+        val raw = prefs.get(KEY_APP_STATUS, null) ?: return BetaStatus.NOT_APPLIED
+        return runCatching { BetaStatus.valueOf(raw) }.getOrDefault(BetaStatus.NOT_APPLIED)
+    }
+
+    /** 本地标记申请为已批准（开发者人工审核后） */
+    fun approveApplication() {
+        prefs.put(KEY_APP_STATUS, BetaStatus.APPROVED.name)
+        prefs.flush()
+    }
+
+    /** 重新申请：清空申请状态，允许用户再次填写 */
+    fun resetApplication() {
+        prefs.remove(KEY_APP_NICKNAME)
+        prefs.remove(KEY_APP_EMAIL)
+        prefs.remove(KEY_APP_USECASE)
+        prefs.remove(KEY_APP_REASON)
+        prefs.remove(KEY_APP_SUBMITTED_AT)
+        prefs.remove(KEY_APP_STATUS)
+        prefs.flush()
+    }
+
+    /** 配置 GitHub Token（用于远程提交申请 Issue；留空则跳过远程） */
+    fun setGithubToken(token: String) {
+        prefs.put(KEY_GITHUB_TOKEN, token.trim())
+        prefs.flush()
+    }
+
+    /** 读取已配置的 GitHub Token */
+    fun getGithubToken(): String = prefs.get(KEY_GITHUB_TOKEN, "").orEmpty()
+
+    /**
+     * 通过 GitHub Issues API 提交申请为 Issue。
+     * 创建 Issue 必须带认证 Token，否则会 401。
+     */
+    private fun submitApplicationToGithub(form: BetaApplication, token: String): Boolean {
+        var conn: HttpURLConnection? = null
+        return try {
+            val body = JSONObject().apply {
+                put("title", "[Beta 申请] ${form.nickname} - ${form.email}")
+                put(
+                    "body", buildString {
+                        appendLine("## Beta 先锋申请")
+                        appendLine("- 昵称：${form.nickname}")
+                        appendLine("- 邮箱：${form.email}")
+                        appendLine("- 使用场景：")
+                        appendLine(form.useCase)
+                        appendLine("- 加入理由：")
+                        appendLine(form.reason)
+                        appendLine("- 提交时间：${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(form.submittedAt))}")
+                        appendLine("---")
+                        appendLine("_由 LiquidGlass Desktop 自动提交_")
+                    }
+                )
+                put("labels", org.json.JSONArray().apply { put("beta-application") })
+            }
+            conn = (URL(GITHUB_ISSUES_API).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 10_000
+                readTimeout = 15_000
+                requestMethod = "POST"
+                setRequestProperty("Authorization", "token $token")
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                doOutput = true
+            }
+            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            conn.responseCode in 200..299
+        } catch (_: Exception) {
+            false
+        } finally {
+            conn?.disconnect()
+        }
+    }
+
+    /**
+     * 保存 Beta 用户反馈到本地文件。
+     *
+     * 存储位置：~/.liquidglass/beta-feedback/feedback-<时间戳>.txt
+     *
+     * @return 保存成功后的文件路径，失败返回 null
+     */
+    fun saveFeedback(feedback: BetaFeedback): String? {
+        return try {
+            val dir = java.io.File(
+                System.getProperty("user.home"),
+                ".liquidglass/beta-feedback"
+            ).apply { if (!exists()) mkdirs() }
+            val df = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault())
+            val file = java.io.File(dir, "feedback-${df.format(Date(feedback.createdAt))}.txt")
+            file.writeText(
+                buildString {
+                    appendLine("=== LiquidGlass Beta 反馈 ===")
+                    appendLine("时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(feedback.createdAt))}")
+                    appendLine("类型: ${feedback.type}")
+                    appendLine("联系方式: ${feedback.contact.ifBlank { "未提供" }}")
+                    appendLine("内容:")
+                    appendLine(feedback.content)
+                },
+                Charsets.UTF_8
+            )
+            // 同时追加一份索引到 Preferences，便于列表展示
+            appendFeedbackIndex(file.absolutePath)
+            file.absolutePath
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 读取已保存的反馈文件路径列表（最近在前，最多 50 条） */
+    fun listFeedback(): List<String> =
+        prefs.get(KEY_FEEDBACK_INDEX, "").orEmpty().split('\n').filter { it.isNotBlank() }
+
+    private fun appendFeedbackIndex(path: String) {
+        val existing = prefs.get(KEY_FEEDBACK_INDEX, "").orEmpty()
+        val lines = (listOf(path) + existing.split('\n').filter { it.isNotBlank() }).take(50)
+        prefs.put(KEY_FEEDBACK_INDEX, lines.joinToString("\n"))
+        prefs.flush()
+    }
+
+    /**
+     * 拉取 version.json 中的版本日志（releaseNotes）。
+     *
+     * 多镜像源尝试：jsDelivr fastly → jsDelivr → raw.githubusercontent。
+     * @return 版本号 + 发布日志的合并文本，失败返回 null
+     */
+    suspend fun fetchChangelog(): String? = withContext(Dispatchers.IO) {
+        for (url in VERSION_JSON_URLS) {
+            val result = fetchChangelogFromUrl(url)
+            if (result != null) return@withContext result
+        }
+        null
+    }
+
+    private fun fetchChangelogFromUrl(urlStr: String): String? {
+        var conn: HttpURLConnection? = null
+        return try {
+            conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8_000
+                readTimeout = 10_000
+                useCaches = false
+                setRequestProperty("User-Agent", "LiquidGlass-Desktop/2.11.0")
+            }
+            if (conn.responseCode != 200) return null
+            val body = conn.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(body)
+            val version = json.optString("version", "")
+            val notes = json.optString("releaseNotes", "")
+            if (notes.isBlank()) return null
+            buildString {
+                if (version.isNotBlank()) appendLine("最新版本：v$version")
+                append(notes)
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            conn?.disconnect()
+        }
+    }
+
     companion object {
         // jsDelivr 国内镜像优先，raw.githubusercontent 兜底
         private const val BETA_URL =
@@ -355,5 +586,26 @@ class BetaPioneerManager {
         private const val KEY_GEN_TIME = "beta_pioneer_gen_time"
         /** 90 天有效期 */
         private const val VALIDITY_MILLIS = 90L * 24 * 3600 * 1000
+
+        // ---- Beta 申请 / 反馈相关 key ----
+        private const val KEY_APP_NICKNAME = "beta_app_nickname"
+        private const val KEY_APP_EMAIL = "beta_app_email"
+        private const val KEY_APP_USECASE = "beta_app_usecase"
+        private const val KEY_APP_REASON = "beta_app_reason"
+        private const val KEY_APP_SUBMITTED_AT = "beta_app_submitted_at"
+        private const val KEY_APP_STATUS = "beta_app_status"
+        private const val KEY_GITHUB_TOKEN = "beta_github_token"
+        private const val KEY_FEEDBACK_INDEX = "beta_feedback_index"
+
+        /** GitHub Issues API（远程提交 Beta 申请，需 Token） */
+        private const val GITHUB_ISSUES_API =
+            "https://api.github.com/repos/jiangtengqiao/liquid-glass/issues"
+
+        /** version.json 多镜像源（用于拉取版本日志 releaseNotes） */
+        private val VERSION_JSON_URLS = listOf(
+            "https://fastly.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/version.json",
+            "https://cdn.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/version.json",
+            "https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/version.json"
+        )
     }
 }

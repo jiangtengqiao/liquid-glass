@@ -37,18 +37,46 @@ enum class TranslateLanguage(val code: String, val display: String) {
     }
 }
 
-/** 会员等级 */
+/** 会员等级
+ *
+ * 额度体系（v2.11.0 调整，配合 LoginManager 平台账号）：
+ * - Free     每日 5,000 字，单次 2,000 字
+ * - Pro      每日 50,000 字，单次 10,000 字
+ * - Premium  无限翻译
+ *
+ * 会员等级来源：[LoginManager.currentUser] 的 membership 字段。
+ * 未登录平台账号时按 Free 处理。
+ */
 enum class MemberTier(val display: String, val dailyQuota: Int, val maxArticleChars: Int) {
-    Free("免费版", 1000, 500),
-    Pro("专业版", 10000, 5000),
-    Premium("高级版", 100000, 50000);
+    Free("免费版", 5_000, 2_000),
+    Pro("专业版", 50_000, 10_000),
+    Premium("高级版", Int.MAX_VALUE, Int.MAX_VALUE);
 
-    /** 是否可使用离线语言包 */
+    /** 是否为无限额度会员 */
+    val unlimited: Boolean get() = this == Premium
+
+    /** 每日额度展示文本（无限会员显示"无限"） */
+    val dailyQuotaText: String get() = if (unlimited) "无限" else "$dailyQuota 字"
+    /** 单次提交上限展示文本 */
+    val maxArticleCharsText: String get() = if (unlimited) "无限" else "$maxArticleChars 字"
+
+    /** 是否可使用离线语言包（免费版仅可使用热门免费包，详见 [canDownloadPack]） */
     fun canUseOfflinePack(): Boolean = this != Free
     /** 是否可批量翻译文章 */
     fun canTranslateArticle(): Boolean = this != Free
     /** 是否可下载高级语言包 */
     fun canDownloadPremiumPacks(): Boolean = this == Premium
+
+    /** 是否可下载指定语言包
+     * - 热门包（hot）：所有等级可下载
+     * - 高级包（premium）：仅 Premium 可下载
+     * - 标准包：Pro 及以上可下载
+     */
+    fun canDownloadPack(pack: LanguagePack): Boolean = when {
+        pack.hot -> true
+        pack.premium -> this == Premium
+        else -> this != Free
+    }
 }
 
 /** 翻译结果 */
@@ -73,7 +101,11 @@ data class TranslationHistory(
     val favorite: Boolean
 )
 
-/** 语言包信息 */
+/** 语言包信息
+ *
+ * @param premium 高级包：仅 Premium 会员可下载
+ * @param hot 热门包：所有用户（含免费版）可下载
+ */
 data class LanguagePack(
     val name: String,
     val fromCode: String,
@@ -81,14 +113,50 @@ data class LanguagePack(
     val sizeBytes: Long,
     val entryCount: Int,
     val premium: Boolean,
+    val hot: Boolean = false,
     val installed: Boolean,
     val downloadUrl: String
 )
 
-/** 今日用量统计 */
-data class UsageStats(val used: Int, val quota: Int) {
-    val remaining: Int get() = (quota - used).coerceAtLeast(0)
-    val exhausted: Boolean get() = used >= quota
+/** 今日用量统计
+ *
+ * @param unlimited 是否为无限额度（Premium 会员）
+ */
+data class UsageStats(val used: Int, val quota: Int, val unlimited: Boolean = false) {
+    val remaining: Int get() = if (unlimited) Int.MAX_VALUE else (quota - used).coerceAtLeast(0)
+    val exhausted: Boolean get() = !unlimited && used >= quota
+}
+
+/** 下载进度（含百分比、速度、镜像源与日志） */
+data class DownloadProgress(
+    val downloaded: Long,
+    val total: Long,
+    val speedBps: Long,
+    val mirrorIndex: Int,
+    val mirrorCount: Int,
+    val mirrorName: String,
+    val log: String,
+    val finished: Boolean = false,
+    val failed: Boolean = false
+) {
+    /** 完成百分比 0..100 */
+    val percent: Int get() = if (total > 0) ((downloaded * 100) / total).toInt().coerceIn(0, 100) else 0
+    /** 速度文本，如 "12.3 KB/s" */
+    val speedText: String get() = when {
+        speedBps <= 0 -> "—"
+        speedBps >= 1_000_000 -> String.format("%.1f MB/s", speedBps / 1_000_000.0)
+        else -> String.format("%.1f KB/s", speedBps / 1_000.0)
+    }
+    val downloadedText: String get() = formatBytes(downloaded)
+    val totalText: String get() = if (total > 0) formatBytes(total) else "未知"
+
+    companion object {
+        fun formatBytes(bytes: Long): String = when {
+            bytes >= 1_000_000 -> String.format("%.1f MB", bytes / 1_000_000.0)
+            bytes >= 1_000 -> String.format("%.1f KB", bytes / 1_000.0)
+            else -> "$bytes B"
+        }
+    }
 }
 
 /**
@@ -138,10 +206,29 @@ class TranslationManager {
 
     // ---- 会员体系 ----
 
-    /** 当前会员等级 */
+    /** 当前会员等级
+     *
+     * 等级来源：[LoginManager] 平台账号。
+     * - 已登录且会员未过期 → 按 membership 等级返回
+     * - 未登录平台账号 → 按 Free 处理
+     *
+     * 本地激活码（[activateTier]）保留用于离线演示，但不再覆盖平台账号等级。
+     */
     fun currentTier(): MemberTier {
-        val name = prefs.get(KEY_TIER, MemberTier.Free.name)
-        return runCatching { MemberTier.valueOf(name) }.getOrDefault(MemberTier.Free)
+        val user = LoginManager.currentUser()
+        if (user != null) {
+            // expireAt = 0 表示永久有效；否则需在当前时间之后
+            val valid = user.expireAt == 0L || user.expireAt > System.currentTimeMillis()
+            if (valid) {
+                return when (user.membership) {
+                    LoginManager.Membership.PREMIUM -> MemberTier.Premium
+                    LoginManager.Membership.PRO -> MemberTier.Pro
+                    LoginManager.Membership.FREE -> MemberTier.Free
+                }
+            }
+        }
+        // 未登录平台账号 → 按 FREE 处理
+        return MemberTier.Free
     }
 
     /** 激活会员（写入等级与激活码） */
@@ -192,11 +279,13 @@ class TranslationManager {
             prefs.flush()
         }
         val used = prefs.getInt(KEY_USAGE_COUNT, 0)
-        return UsageStats(used = used, quota = currentTier().dailyQuota)
+        val tier = currentTier()
+        return UsageStats(used = used, quota = tier.dailyQuota, unlimited = tier.unlimited)
     }
 
-    /** 增加用量（按字符数累计） */
+    /** 增加用量（按字符数累计；无限会员不计数） */
     private fun addUsage(chars: Int) {
+        if (currentTier().unlimited) return  // 无限会员不计数
         val today = todayKey()
         val savedDate = prefs.get(KEY_USAGE_DATE, "")
         if (savedDate != today) {
@@ -229,12 +318,13 @@ class TranslationManager {
     ): TranslationResult? = withContext(Dispatchers.IO) {
         if (text.isBlank()) return@withContext null
 
-        // 免费版文章长度限制
         val tier = currentTier()
-        if (text.length > tier.maxArticleChars) {
+
+        // 单次提交长度限制（无限会员不限）
+        if (!tier.unlimited && text.length > tier.maxArticleChars) {
             return@withContext TranslationResult(
                 source = text,
-                target = "文本过长（${text.length} 字），${tier.display}上限 ${tier.maxArticleChars} 字，请升级会员或缩短文本。",
+                target = "文本过长（${text.length} 字），${tier.display}单次上限 ${tier.maxArticleCharsText}，请升级会员或缩短文本。",
                 from = from.code, to = to.code, offline = false
             )
         }
@@ -248,14 +338,21 @@ class TranslationManager {
                 from = from.code, to = to.code, offline = false
             )
         }
+        // 关键修复：校验「已使用 + 本次提交 ≤ 总额度」，防止累加后超出总额度
+        // （原 bug：仅校验单次 ≤ 上限，导致 999/1000 时提交 500 字后变成 1499 超额）
+        if (!usage.unlimited && usage.used + text.length > usage.quota) {
+            return@withContext TranslationResult(
+                source = text,
+                target = "今日免费额度不足，剩余 ${usage.remaining} 字（本次需要 ${text.length} 字），请缩短文本或升级会员。",
+                from = from.code, to = to.code, offline = false
+            )
+        }
 
-        // 1. 离线词典优先（单词/短语）
-        if (tier.canUseOfflinePack()) {
-            val offline = lookupOffline(text, from, to)
-            if (offline != null) {
-                addUsage(text.length)
-                return@withContext offline
-            }
+        // 1. 离线词典优先（内置词典 + 已下载语言包；热门包对所有用户开放）
+        val offline = lookupOffline(text, from, to)
+        if (offline != null) {
+            addUsage(text.length)
+            return@withContext offline
         }
 
         // 2. 在线翻译：多源兜底
@@ -447,7 +544,7 @@ class TranslationManager {
     }
 
     private fun tryFetchPackIndex(): List<LanguagePack>? {
-        // 多镜像源依次尝试：jsDelivr → fastly → GitHub raw → gh-proxy
+        // 多镜像源依次尝试：jsDelivr → Fastly → GitHub raw → gh-proxy → ghfast
         for (base in PACK_MIRRORS) {
             try {
                 val req = Request.Builder()
@@ -465,6 +562,7 @@ class TranslationManager {
                             sizeBytes = o.optLong("size", 0),
                             entryCount = o.optInt("entries", 0),
                             premium = o.optBoolean("premium", false),
+                            hot = o.optBoolean("hot", false),
                             installed = isPackInstalled(fromCode, toCode),
                             downloadUrl = "$base/${fromCode}_$toCode.dict"
                         )
@@ -475,51 +573,62 @@ class TranslationManager {
         return null
     }
 
-    /** 本地兜底清单（远程不可达时展示） */
+    /** 本地兜底清单（远程不可达时展示）
+     *
+     * 分级：
+     * - 热门（hot=true）：英汉/汉英大词典，所有用户可下载
+     * - 标准：常见语种互译，Pro+ 可下载
+     * - 高级（premium=true）：小语种，Premium 可下载
+     */
     private fun fallbackPackList(): List<LanguagePack> {
+        // (from, to, 名称, hot, premium)
+        data class PackDef(val from: String, val to: String, val name: String, val hot: Boolean, val premium: Boolean)
         val list = listOf(
-            Triple("en", "zh", "英汉大词典"),
-            Triple("zh", "en", "汉英大词典"),
-            Triple("en", "ja", "英和词典"),
-            Triple("ja", "en", "和英词典"),
-            Triple("en", "ko", "英韩词典"),
-            Triple("en", "fr", "英法词典"),
-            Triple("fr", "en", "法英词典"),
-            Triple("en", "de", "英德词典"),
-            Triple("de", "en", "德英词典"),
-            Triple("en", "es", "英西词典"),
-            Triple("es", "en", "西英词典"),
-            Triple("en", "ru", "英俄词典"),
-            Triple("ru", "en", "俄英词典"),
-            Triple("en", "ar", "英阿词典（高级）"),
-            Triple("en", "th", "英泰词典（高级）"),
-            Triple("en", "vi", "英越词典（高级）")
+            PackDef("en", "zh", "英汉大词典", hot = true, premium = false),
+            PackDef("zh", "en", "汉英大词典", hot = true, premium = false),
+            PackDef("en", "ja", "英和词典", hot = true, premium = false),
+            PackDef("ja", "en", "和英词典", hot = true, premium = false),
+            PackDef("en", "ko", "英韩词典", hot = false, premium = false),
+            PackDef("en", "fr", "英法词典", hot = false, premium = false),
+            PackDef("fr", "en", "法英词典", hot = false, premium = false),
+            PackDef("en", "de", "英德词典", hot = false, premium = false),
+            PackDef("de", "en", "德英词典", hot = false, premium = false),
+            PackDef("en", "es", "英西词典", hot = false, premium = false),
+            PackDef("es", "en", "西英词典", hot = false, premium = false),
+            PackDef("en", "ru", "英俄词典", hot = false, premium = false),
+            PackDef("ru", "en", "俄英词典", hot = false, premium = false),
+            PackDef("en", "ar", "英阿词典", hot = false, premium = true),
+            PackDef("en", "th", "英泰词典", hot = false, premium = true),
+            PackDef("en", "vi", "英越词典", hot = false, premium = true)
         )
         // downloadUrl 仅用于显示；实际下载时按 PACK_MIRRORS 顺序逐源尝试
-        return list.map { (from, to, name) ->
+        return list.map { d ->
             LanguagePack(
-                name = name,
-                fromCode = from, toCode = to,
+                name = d.name,
+                fromCode = d.from, toCode = d.to,
                 sizeBytes = 0, entryCount = 0,
-                premium = name.contains("高级"),
-                installed = isPackInstalled(from, to),
-                downloadUrl = "${PACK_MIRRORS.first()}/${from}_$to.dict"
+                premium = d.premium,
+                hot = d.hot,
+                installed = isPackInstalled(d.from, d.to),
+                downloadUrl = "${PACK_MIRRORS.first()}/${d.from}_${d.to}.dict"
             )
         }
     }
 
     /**
      * 下载语言包到本地（带进度回调，多镜像源逐源兜底）
-     * @param onProgress 已下载字节 / 总字节
+     *
+     * @param onProgress 下载进度回调（含百分比、速度、镜像源、日志）
      *
      * 实现说明：
      * - 按 PACK_MIRRORS 顺序逐源尝试，任一源成功即返回
      * - 失败源跳过，所有源都失败才返回 false
      * - 下载到 .tmp 文件，完成后原子重命名为正式文件
+     * - 每 500ms 上报一次下载速度，避免高频回调卡 UI
      */
     suspend fun downloadPack(
         pack: LanguagePack,
-        onProgress: (Long, Long) -> Unit
+        onProgress: (DownloadProgress) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         val target = packFile(pack.fromCode, pack.toCode)
         target.parentFile?.mkdirs()
@@ -528,25 +637,69 @@ class TranslationManager {
         val urls = LinkedHashSet<String>()
         urls.add(pack.downloadUrl)
         PACK_MIRRORS.forEach { base -> urls.add("$base/${pack.fromCode}_${pack.toCode}.dict") }
+        val urlList = urls.toList()
+        val mirrorCount = urlList.size
 
-        for (url in urls) {
+        for ((idx, url) in urlList.withIndex()) {
+            val mirror = mirrorNameOf(url)
+            onProgress(DownloadProgress(
+                downloaded = 0, total = 0, speedBps = 0,
+                mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                log = "尝试镜像源 [$mirror]（${idx + 1}/$mirrorCount）..."
+            ))
             try {
                 val req = Request.Builder().url(url).get().build()
                 val ok = client.newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) return@use false
+                    if (!resp.isSuccessful) {
+                        onProgress(DownloadProgress(
+                            downloaded = 0, total = 0, speedBps = 0,
+                            mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                            log = "镜像源 [$mirror] 返回 HTTP ${resp.code}，切换下一源"
+                        ))
+                        return@use false
+                    }
                     val total = resp.body?.contentLength() ?: -1L
+                    onProgress(DownloadProgress(
+                        downloaded = 0, total = total, speedBps = 0,
+                        mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                        log = if (total > 0) "连接成功，总大小 ${DownloadProgress.formatBytes(total)}，开始下载"
+                        else "连接成功，开始下载（总大小未知）"
+                    ))
                     tmp.outputStream().use { out ->
                         val source = resp.body?.byteStream() ?: return@use false
                         val buf = ByteArray(8192)
                         var read: Int
                         var downloaded = 0L
+                        var lastTime = System.currentTimeMillis()
+                        var lastBytes = 0L
                         while (true) {
                             read = source.read(buf)
                             if (read <= 0) break
                             out.write(buf, 0, read)
                             downloaded += read
-                            onProgress(downloaded, total)
+                            val now = System.currentTimeMillis()
+                            val dt = now - lastTime
+                            // 每 500ms 上报一次速度，避免高频回调
+                            if (dt >= 500) {
+                                val speed = (downloaded - lastBytes) * 1000L / dt.coerceAtLeast(1L)
+                                onProgress(DownloadProgress(
+                                    downloaded = downloaded, total = total, speedBps = speed,
+                                    mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                                    log = "下载中 ${if (total > 0) "${(downloaded * 100 / total).toInt()}%" else ""} · " +
+                                        "${DownloadProgress.formatBytes(downloaded)}" +
+                                        (if (total > 0) " / ${DownloadProgress.formatBytes(total)}" else "") +
+                                        " · ${if (speed >= 1_000_000) String.format("%.1f MB/s", speed / 1_000_000.0) else String.format("%.1f KB/s", speed / 1000.0)}"
+                                ))
+                                lastTime = now
+                                lastBytes = downloaded
+                            }
                         }
+                        // 末尾上报一次
+                        onProgress(DownloadProgress(
+                            downloaded = downloaded, total = total, speedBps = 0,
+                            mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                            log = "镜像源 [$mirror] 下载完成，共 ${DownloadProgress.formatBytes(downloaded)}，正在保存..."
+                        ))
                         true
                     }
                 }
@@ -557,17 +710,45 @@ class TranslationManager {
                         synchronized(packLoadLock) {
                             loadedPacks.remove(packKey(pack.fromCode, pack.toCode))
                         }
+                        onProgress(DownloadProgress(
+                            downloaded = tmp.length(), total = tmp.length(), speedBps = 0,
+                            mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                            log = "安装完成：${pack.name}", finished = true
+                        ))
                         return@withContext true
                     }
                 }
                 // 当前源失败，清理 tmp 进入下一个源
                 runCatching { if (tmp.exists()) tmp.delete() }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 runCatching { if (tmp.exists()) tmp.delete() }
+                onProgress(DownloadProgress(
+                    downloaded = 0, total = 0, speedBps = 0,
+                    mirrorIndex = idx, mirrorCount = mirrorCount, mirrorName = mirror,
+                    log = "镜像源 [$mirror] 异常：${e.message ?: e.javaClass.simpleName}，切换下一源"
+                ))
                 continue
             }
         }
+        onProgress(DownloadProgress(
+            downloaded = 0, total = 0, speedBps = 0,
+            mirrorIndex = mirrorCount, mirrorCount = mirrorCount, mirrorName = "—",
+            log = "所有镜像源均失败，下载失败", failed = true
+        ))
         false
+    }
+
+    /** 从 URL 提取友好的镜像源名称 */
+    private fun mirrorNameOf(url: String): String {
+        val host = runCatching { java.net.URI(url).host }.getOrNull() ?: return url
+        return when {
+            host.contains("jsdelivr.net") -> "jsDelivr"
+            host.contains("ghfast") -> "ghfast"
+            host.contains("gh-proxy") -> "gh-proxy"
+            host.contains("raw.githubusercontent") -> "GitHub raw"
+            host.contains("fastly") -> "Fastly"
+            else -> host
+        }
     }
 
     /** 删除已安装语言包 */
@@ -640,17 +821,19 @@ class TranslationManager {
         /**
          * 语言包远程目录 - 多镜像源（按优先级尝试）
          *
-         * 选源策略：
-         * 1. cdn.jsdelivr.net - jsDelivr 主 CDN，国内可达性较好
+         * 选源策略（v2.11.0 增加 ghfast）：
+         * 1. cdn.jsdelivr.net  - jsDelivr 主 CDN，国内可达性较好
          * 2. fastly.jsdelivr.net - Fastly 镜像，主 CDN 不可达时兜底
          * 3. raw.githubusercontent.com - GitHub 原始源（直连，国外快国内慢）
-         * 4. gh-proxy.com 代理 - 国内 GitHub 反代，最终兜底
+         * 4. gh-proxy.com 代理 - 国内 GitHub 反代
+         * 5. ghfast.top 代理 - 国内 GitHub 反代（最终兜底）
          */
         private val PACK_MIRRORS = listOf(
             "https://cdn.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/translate-packs",
             "https://fastly.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/translate-packs",
             "https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs",
-            "https://gh-proxy.com/https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs"
+            "https://gh-proxy.com/https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs",
+            "https://ghfast.top/https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs"
         )
         private const val KEY_TIER = "translate_tier"
         private const val KEY_CODE = "translate_code"
