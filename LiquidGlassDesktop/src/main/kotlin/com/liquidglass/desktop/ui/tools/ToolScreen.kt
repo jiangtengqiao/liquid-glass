@@ -567,10 +567,10 @@ private fun DrawingTool() {
                             val event = awaitPointerEvent()
                             event.changes.forEach { change ->
                                 if (change.pressed) {
-                                    currentPath = currentPath + change.position
+                                    currentPath = currentPath + listOf(change.position)
                                 } else {
                                     if (currentPath.isNotEmpty()) {
-                                        paths = paths + currentPath
+                                        paths = paths + listOf(currentPath)
                                         currentPath = emptyList()
                                     }
                                 }

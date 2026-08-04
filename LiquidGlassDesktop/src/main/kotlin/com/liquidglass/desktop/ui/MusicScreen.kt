@@ -1150,7 +1150,7 @@ private fun PlayerBar(
                                 val event = awaitPointerEvent()
                                 val change = event.changes.firstOrNull() ?: continue
                                 if (event.type == PointerEventType.Press ||
-                                    (event.type == PointerEventType.Drag && change.pressed)) {
+                                    (event.type == PointerEventType.Move && change.pressed)) {
                                     val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
                                     volSlider = ratio
                                     onVolumeChange(ratio)
