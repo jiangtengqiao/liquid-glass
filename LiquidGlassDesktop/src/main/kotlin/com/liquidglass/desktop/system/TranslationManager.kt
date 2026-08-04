@@ -131,6 +131,11 @@ class TranslationManager {
     private val loadedPacks: MutableMap<String, Map<String, String>> = mutableMapOf()
     private val packLoadLock = Any()
 
+    /** 内置常用英汉词典（无需下载即可查询高频词） */
+    private val builtinEnZh: Map<String, String> by lazy { BuiltinDictionary.enZh }
+    /** 内置常用汉英词典 */
+    private val builtinZhEn: Map<String, String> by lazy { BuiltinDictionary.zhEn }
+
     // ---- 会员体系 ----
 
     /** 当前会员等级 */
@@ -364,6 +369,23 @@ class TranslationManager {
         from: TranslateLanguage,
         to: TranslateLanguage
     ): TranslationResult? {
+        // 1. 先查内置常用词典（免下载即可用）
+        val builtin = when {
+            (from == TranslateLanguage.EN || from == TranslateLanguage.AUTO) && to == TranslateLanguage.ZH -> builtinEnZh
+            (from == TranslateLanguage.ZH || from == TranslateLanguage.AUTO) && to == TranslateLanguage.EN -> builtinZhEn
+            else -> null
+        }
+        if (builtin != null) {
+            val hit = builtin[text] ?: builtin[text.lowercase()] ?: builtin[text.uppercase()]
+                ?: builtin[text.replaceFirstChar { it.uppercase() }]
+            if (hit != null) {
+                return TranslationResult(
+                    source = text, target = hit,
+                    from = from.code, to = to.code, offline = true
+                )
+            }
+        }
+        // 2. 再查已下载的语言包
         val key = packKey(from.code, to.code)
         val pack = synchronized(packLoadLock) {
             loadedPacks[key] ?: loadPack(from.code, to.code)?.also { loadedPacks[key] = it }
@@ -425,28 +447,32 @@ class TranslationManager {
     }
 
     private fun tryFetchPackIndex(): List<LanguagePack>? {
-        return try {
-            val req = Request.Builder()
-                .url("$PACK_BASE_URL/packs-index.json").get().build()
-            client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return null
-                val arr = JSONArray(resp.body?.string() ?: return null)
-                (0 until arr.length()).mapNotNull { i ->
-                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
-                    val fromCode = o.optString("from")
-                    val toCode = o.optString("to")
-                    LanguagePack(
-                        name = o.optString("name", "$fromCode → $toCode"),
-                        fromCode = fromCode, toCode = toCode,
-                        sizeBytes = o.optLong("size", 0),
-                        entryCount = o.optInt("entries", 0),
-                        premium = o.optBoolean("premium", false),
-                        installed = isPackInstalled(fromCode, toCode),
-                        downloadUrl = "$PACK_BASE_URL/${fromCode}_$toCode.dict"
-                    )
+        // 多镜像源依次尝试：jsDelivr → fastly → GitHub raw → gh-proxy
+        for (base in PACK_MIRRORS) {
+            try {
+                val req = Request.Builder()
+                    .url("$base/packs-index.json").get().build()
+                client.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val arr = JSONArray(resp.body?.string() ?: return@use)
+                    return (0 until arr.length()).mapNotNull { i ->
+                        val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                        val fromCode = o.optString("from")
+                        val toCode = o.optString("to")
+                        LanguagePack(
+                            name = o.optString("name", "$fromCode → $toCode"),
+                            fromCode = fromCode, toCode = toCode,
+                            sizeBytes = o.optLong("size", 0),
+                            entryCount = o.optInt("entries", 0),
+                            premium = o.optBoolean("premium", false),
+                            installed = isPackInstalled(fromCode, toCode),
+                            downloadUrl = "$base/${fromCode}_$toCode.dict"
+                        )
+                    }
                 }
-            }
-        } catch (_: Exception) { null }
+            } catch (_: Exception) { continue }
+        }
+        return null
     }
 
     /** 本地兜底清单（远程不可达时展示） */
@@ -469,6 +495,7 @@ class TranslationManager {
             Triple("en", "th", "英泰词典（高级）"),
             Triple("en", "vi", "英越词典（高级）")
         )
+        // downloadUrl 仅用于显示；实际下载时按 PACK_MIRRORS 顺序逐源尝试
         return list.map { (from, to, name) ->
             LanguagePack(
                 name = name,
@@ -476,51 +503,71 @@ class TranslationManager {
                 sizeBytes = 0, entryCount = 0,
                 premium = name.contains("高级"),
                 installed = isPackInstalled(from, to),
-                downloadUrl = "$PACK_BASE_URL/${from}_$to.dict"
+                downloadUrl = "${PACK_MIRRORS.first()}/${from}_$to.dict"
             )
         }
     }
 
     /**
-     * 下载语言包到本地（带进度回调）
+     * 下载语言包到本地（带进度回调，多镜像源逐源兜底）
      * @param onProgress 已下载字节 / 总字节
+     *
+     * 实现说明：
+     * - 按 PACK_MIRRORS 顺序逐源尝试，任一源成功即返回
+     * - 失败源跳过，所有源都失败才返回 false
+     * - 下载到 .tmp 文件，完成后原子重命名为正式文件
      */
     suspend fun downloadPack(
         pack: LanguagePack,
         onProgress: (Long, Long) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val req = Request.Builder().url(pack.downloadUrl).get().build()
-            client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext false
-                val total = resp.body?.contentLength() ?: -1L
-                val target = packFile(pack.fromCode, pack.toCode)
-                target.parentFile?.mkdirs()
-                val tmp = File(target.parentFile, target.name + ".tmp")
-                tmp.outputStream().use { out ->
-                    val source = resp.body?.byteStream() ?: return@withContext false
-                    val buf = ByteArray(8192)
-                    var read: Int
-                    var downloaded = 0L
-                    while (true) {
-                        read = source.read(buf)
-                        if (read <= 0) break
-                        out.write(buf, 0, read)
-                        downloaded += read
-                        onProgress(downloaded, total)
+        val target = packFile(pack.fromCode, pack.toCode)
+        target.parentFile?.mkdirs()
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        // 构造候选 URL：优先 pack.downloadUrl，再补全镜像源（去重）
+        val urls = LinkedHashSet<String>()
+        urls.add(pack.downloadUrl)
+        PACK_MIRRORS.forEach { base -> urls.add("$base/${pack.fromCode}_${pack.toCode}.dict") }
+
+        for (url in urls) {
+            try {
+                val req = Request.Builder().url(url).get().build()
+                val ok = client.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use false
+                    val total = resp.body?.contentLength() ?: -1L
+                    tmp.outputStream().use { out ->
+                        val source = resp.body?.byteStream() ?: return@use false
+                        val buf = ByteArray(8192)
+                        var read: Int
+                        var downloaded = 0L
+                        while (true) {
+                            read = source.read(buf)
+                            if (read <= 0) break
+                            out.write(buf, 0, read)
+                            downloaded += read
+                            onProgress(downloaded, total)
+                        }
+                        true
                     }
                 }
-                if (tmp.exists() && tmp.length() > 0) {
+                if (ok && tmp.exists() && tmp.length() > 0) {
                     if (target.exists()) target.delete()
-                    tmp.renameTo(target)
-                    // 重新载入
-                    synchronized(packLoadLock) {
-                        loadedPacks.remove(packKey(pack.fromCode, pack.toCode))
+                    if (tmp.renameTo(target)) {
+                        // 重新载入
+                        synchronized(packLoadLock) {
+                            loadedPacks.remove(packKey(pack.fromCode, pack.toCode))
+                        }
+                        return@withContext true
                     }
-                    true
-                } else false
+                }
+                // 当前源失败，清理 tmp 进入下一个源
+                runCatching { if (tmp.exists()) tmp.delete() }
+            } catch (_: Exception) {
+                runCatching { if (tmp.exists()) tmp.delete() }
+                continue
             }
-        } catch (_: Exception) { false }
+        }
+        false
     }
 
     /** 删除已安装语言包 */
@@ -590,9 +637,21 @@ class TranslationManager {
     fun loadFavorites(): List<TranslationHistory> = loadHistory(10000).filter { it.favorite }
 
     companion object {
-        /** 语言包远程目录（对象存储主源，可热更新） */
-        private const val PACK_BASE_URL =
-            "https://cdn.liquidglass.app/translate/packs"
+        /**
+         * 语言包远程目录 - 多镜像源（按优先级尝试）
+         *
+         * 选源策略：
+         * 1. cdn.jsdelivr.net - jsDelivr 主 CDN，国内可达性较好
+         * 2. fastly.jsdelivr.net - Fastly 镜像，主 CDN 不可达时兜底
+         * 3. raw.githubusercontent.com - GitHub 原始源（直连，国外快国内慢）
+         * 4. gh-proxy.com 代理 - 国内 GitHub 反代，最终兜底
+         */
+        private val PACK_MIRRORS = listOf(
+            "https://cdn.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/translate-packs",
+            "https://fastly.jsdelivr.net/gh/jiangtengqiao/liquid-glass@main/translate-packs",
+            "https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs",
+            "https://gh-proxy.com/https://raw.githubusercontent.com/jiangtengqiao/liquid-glass/main/translate-packs"
+        )
         private const val KEY_TIER = "translate_tier"
         private const val KEY_CODE = "translate_code"
         private const val KEY_USAGE_DATE = "translate_usage_date"

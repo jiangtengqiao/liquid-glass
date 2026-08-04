@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
-import androidx.compose.material.Surface
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.MaterialTheme
@@ -317,16 +316,17 @@ private fun PassedSection(
                 fontSize = 14.sp
             )
             Spacer(Modifier.width(8.dp))
-            Surface(
-                onClick = onCopy,
-                shape = RoundedCornerShape(6.dp),
-                color = if (copied) Color(0xFF00E5A0) else LiquidGlassTheme.accentSecondary
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (copied) Color(0xFF00E5A0) else LiquidGlassTheme.accentSecondary)
+                    .clickable { onCopy() }
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = if (copied) "已复制" else "复制",
                     color = Color.White,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    fontSize = 12.sp
                 )
             }
         }

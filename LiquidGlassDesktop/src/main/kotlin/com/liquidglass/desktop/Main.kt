@@ -2,12 +2,14 @@ package com.liquidglass.desktop
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,8 +20,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.scale
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
@@ -36,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -55,6 +60,7 @@ import com.liquidglass.desktop.ui.AboutScreen
 import com.liquidglass.desktop.ui.BetaPioneerScreen
 import com.liquidglass.desktop.ui.FluidBackground
 import com.liquidglass.desktop.ui.HomeScreen
+import com.liquidglass.desktop.ui.MusicScreen
 import com.liquidglass.desktop.ui.TranslationScreen
 import com.liquidglass.desktop.ui.tools.ToolScreen
 import com.liquidglass.desktop.ui.tools.ToolType
@@ -62,7 +68,7 @@ import java.util.prefs.Preferences
 import kotlin.math.PI
 
 /** 侧边栏可导航的屏幕 */
-enum class Screen { Home, Translation, About, BetaPioneer }
+enum class Screen { Home, Music, Translation, About, BetaPioneer }
 
 /**
  * 应用入口：创建窗口并托管 App
@@ -188,6 +194,7 @@ fun App() {
                             announcementManager = announcementManager,
                             onToolClick = { selectedTool = it }
                         )
+                        Screen.Music -> MusicScreen()
                         Screen.Translation -> TranslationScreen(manager = translationManager)
                         Screen.About -> AboutScreen()
                         Screen.BetaPioneer -> BetaPioneerScreen(betaPioneerManager = betaPioneerManager)
@@ -244,7 +251,7 @@ fun App() {
     }
 }
 
-/** 侧边栏导航 - Material3 NavigationRail 风格 */
+/** 侧边栏导航 - Material3 NavigationRail 风格（v2.10.0 交互优化） */
 @Composable
 private fun Sidebar(
     current: Screen,
@@ -258,43 +265,85 @@ private fun Sidebar(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // 品牌区
-        Text(
-            text = "灵工坊",
-            color = LiquidGlassTheme.onSurfaceColor,
-            style = MaterialTheme.typography.h5,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "LiquidGlass Desktop",
-            color = LiquidGlassTheme.onSurfaceMuted,
-            style = MaterialTheme.typography.caption
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                LiquidGlassTheme.accentPrimary,
+                                LiquidGlassTheme.accentSecondary
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("◆", color = LiquidGlassTheme.onAccent, fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = "灵工坊",
+                    color = LiquidGlassTheme.onSurfaceColor,
+                    style = MaterialTheme.typography.h6,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "LiquidGlass",
+                    color = LiquidGlassTheme.onSurfaceMuted,
+                    style = MaterialTheme.typography.caption
+                )
+            }
+        }
         Spacer(Modifier.height(20.dp))
 
         navItems.forEach { item ->
             val selected = current == item.screen
             var hovered by remember { mutableStateOf(false) }
+            var pressed by remember { mutableStateOf(false) }
 
-            // 选中态：左侧竖条 + 玻璃背景；hover 态：轻微背景
+            val itemScale by animateFloatAsState(
+                targetValue = when {
+                    pressed -> 0.97f
+                    hovered -> 1.02f
+                    else -> 1f
+                },
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "navScale"
+            )
+
+            // 选中态：渐变背景；hover 态：轻微背景
             val bgColor = when {
-                selected -> LiquidGlassTheme.accentPrimary.copy(alpha = 0.22f)
-                hovered -> LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f)
+                selected -> LiquidGlassTheme.accentPrimary.copy(alpha = 0.25f)
+                hovered -> LiquidGlassTheme.surfaceVariant.copy(alpha = 0.5f)
                 else -> Color.Transparent
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .scale(itemScale)
                     .clip(RoundedCornerShape(12.dp))
                     .background(bgColor)
-                    .clickable { onSelect(item.screen) }
-                    .pointerInput(Unit) {
+                    .pointerInput(item.screen) {
                         awaitPointerEventScope {
                             while (true) {
                                 val event = awaitPointerEvent()
                                 when (event.type) {
                                     PointerEventType.Enter -> hovered = true
-                                    PointerEventType.Exit -> hovered = false
+                                    PointerEventType.Exit -> { hovered = false; pressed = false }
+                                    PointerEventType.Press -> pressed = true
+                                    PointerEventType.Release -> {
+                                        if (pressed) {
+                                            pressed = false
+                                            onSelect(item.screen)
+                                        }
+                                    }
                                     else -> {}
                                 }
                             }
@@ -307,13 +356,33 @@ private fun Sidebar(
                         .padding(horizontal = 12.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 图标（unicode 字符，避免引入图标库依赖）
-                    Text(
-                        text = item.icon,
-                        color = if (selected) LiquidGlassTheme.accentSecondary
-                        else LiquidGlassTheme.onSurfaceMuted,
-                        fontSize = 18.sp
-                    )
+                    // 图标：渐变背景圆 + emoji（选中态高亮）
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (selected) Brush.radialGradient(
+                                    colors = listOf(
+                                        LiquidGlassTheme.accentSecondary.copy(alpha = 0.6f),
+                                        LiquidGlassTheme.accentPrimary.copy(alpha = 0.3f)
+                                    )
+                                ) else Brush.radialGradient(
+                                    colors = listOf(
+                                        LiquidGlassTheme.surfaceVariant.copy(alpha = 0.4f),
+                                        Color.Transparent
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = item.icon,
+                            color = if (selected) LiquidGlassTheme.onSurfaceBright
+                            else LiquidGlassTheme.onSurfaceMuted,
+                            fontSize = 16.sp
+                        )
+                    }
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = item.label,
@@ -322,6 +391,16 @@ private fun Sidebar(
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         fontSize = 14.sp
                     )
+                    // 选中态右侧指示条
+                    if (selected) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(width = 3.dp, height = 16.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(LiquidGlassTheme.accentSecondary)
+                        )
+                    }
                 }
             }
         }
@@ -332,6 +411,7 @@ private data class NavItem(val screen: Screen, val label: String, val icon: Stri
 
 private val navItems: List<NavItem> = listOf(
     NavItem(Screen.Home, "首页", "⌂"),
+    NavItem(Screen.Music, "音乐", "♪"),
     NavItem(Screen.Translation, "翻译中心", "文"),
     NavItem(Screen.About, "关于", "ⓘ"),
     NavItem(Screen.BetaPioneer, "Beta 先锋", "★")

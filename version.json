@@ -1,7 +1,7 @@
 {
-  "version": "2.9.4",
-  "versionCode": 53,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.4/LiquidGlass-v2.9.4.apk",
-  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.4/LiquidGlass-2.9.4.exe",
-  "releaseNotes": "v2.9.4 玻璃UI重构+应用内更新下载向导 - 修复文字与背景重叠不可读(glassAlpha 0.08→0.72 达WCAG对比度)+Material3色彩层级+应用内下载更新(多镜像源+进度+SHA256校验+快捷方式选项+实时下载日志展开隐藏)+Beta先锋jsDelivr国内镜像+UpdateChecker版本号同步"
+  "version": "2.10.0",
+  "versionCode": 54,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.10.0/LiquidGlass-v2.10.0.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.10.0/LiquidGlass-2.10.0.exe",
+  "releaseNotes": "v2.10.0 恢复音乐板块(20+功能:网易云登录/搜索/歌词/歌单/本地播放/队列/音质/睡眠定时/播放模式) + 背景色彩折射增强(7层光斑+网格纹理+暗角) + 交互修复(消除圆角尖角反馈,改用scale弹性动画) + 侧边栏图标渐变背景圆 + 工具卡片hover上浮动画"
 }

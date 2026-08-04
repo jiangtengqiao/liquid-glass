@@ -67,17 +67,11 @@ fun ToolScreen(tool: ToolType, onBack: () -> Unit) {
                 ToolType.Note -> NoteTool()
                 ToolType.Password -> PasswordTool()
                 ToolType.Converter -> ConverterTool()
-                else -> BuildingPlaceholder(tool.label)
+                ToolType.Calendar -> CalendarTool()
+                ToolType.Health -> HealthTool()
+                ToolType.Drawing -> DrawingTool()
+                ToolType.WhiteNoise -> WhiteNoiseTool()
             }
-        }
-    }
-}
-
-@Composable
-private fun BuildingPlaceholder(name: String) {
-    GlassCard(modifier = Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("「$name」桌面端建设中，敬请期待", color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
         }
     }
 }
@@ -367,6 +361,338 @@ private fun ConverterTool() {
                 }) { Text("转换") }
             }
             if (result.isNotBlank()) Text(result, style = MaterialTheme.typography.h5)
+        }
+    }
+}
+
+// ===================== 日历 =====================
+
+@Composable
+private fun CalendarTool() {
+    val cal = remember { java.util.Calendar.getInstance() }
+    var year by remember { mutableStateOf(cal.get(java.util.Calendar.YEAR)) }
+    var month by remember { mutableStateOf(cal.get(java.util.Calendar.MONTH)) }
+    val today = remember {
+        Triple(
+            cal.get(java.util.Calendar.YEAR),
+            cal.get(java.util.Calendar.MONTH),
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+    }
+
+    val daysInMonth = java.time.YearMonth.of(year, month + 1).lengthOfMonth()
+    val firstDayOfWeek = java.time.LocalDate.of(year, month + 1, 1).dayOfWeek.value % 7 // 周日=0
+    val monthNames = listOf("一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月")
+    val weekHeaders = listOf("日","一","二","三","四","五","六")
+
+    Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        GlassCard(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().padding(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(onClick = {
+                    if (month == 0) { month = 11; year-- } else month--
+                }) { Text("‹") }
+                Text(
+                    "$year 年 ${monthNames[month]}",
+                    style = MaterialTheme.typography.h6,
+                    color = Color(0xFF7B5CFC)
+                )
+                OutlinedButton(onClick = {
+                    if (month == 11) { month = 0; year++ } else month++
+                }) { Text("›") }
+            }
+        }
+        // 星期表头
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            weekHeaders.forEach { w ->
+                Text(
+                    w,
+                    color = Color(0xFF00D4FF),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+        // 日期网格
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            var day = 1
+            for (row in 0..5) {
+                if (day > daysInMonth) break
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    for (col in 0..6) {
+                        val isToday = year == today.first && month == today.second && day == today.third
+                        if (row == 0 && col < firstDayOfWeek || day > daysInMonth) {
+                            Spacer(Modifier.weight(1f))
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(2.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (isToday) Color(0xFF7B5CFC) else Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "$day",
+                                    color = if (isToday) Color.White else MaterialTheme.colors.onSurface,
+                                    modifier = Modifier.padding(vertical = 6.dp)
+                                )
+                            }
+                            day++
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===================== 健康计算（BMI + 基础代谢） =====================
+
+@Composable
+private fun HealthTool() {
+    var height by remember { mutableStateOf("170") }
+    var weight by remember { mutableStateOf("65") }
+    var age by remember { mutableStateOf("25") }
+    var isMale by remember { mutableStateOf(true) }
+    var result by remember { mutableStateOf("") }
+
+    Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = height, onValueChange = { height = it.filter { c -> c.isDigit() } },
+                    label = { Text("身高 (cm)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                OutlinedTextField(
+                    value = weight, onValueChange = { weight = it.filter { c -> c.isDigit() } },
+                    label = { Text("体重 (kg)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                OutlinedTextField(
+                    value = age, onValueChange = { age = it.filter { c -> c.isDigit() } },
+                    label = { Text("年龄") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { isMale = true }) {
+                        Text(if (isMale) "男 ✓" else "男")
+                    }
+                    Button(onClick = { isMale = false }) {
+                        Text(if (!isMale) "女 ✓" else "女")
+                    }
+                }
+                Button(onClick = {
+                    val h = height.toDoubleOrNull() ?: 0.0
+                    val w = weight.toDoubleOrNull() ?: 0.0
+                    val a = age.toDoubleOrNull() ?: 0.0
+                    if (h > 0 && w > 0 && a > 0) {
+                        val bmi = w / (h / 100.0).let { it * it }
+                        val bmiCategory = when {
+                            bmi < 18.5 -> "偏瘦"
+                            bmi < 24 -> "正常"
+                            bmi < 28 -> "超重"
+                            else -> "肥胖"
+                        }
+                        // Mifflin-St Jeor 基础代谢率
+                        val bmr = if (isMale) {
+                            10 * w + 6.25 * h - 5 * a + 5
+                        } else {
+                            10 * w + 6.25 * h - 5 * a - 161
+                        }
+                        result = "BMI: %.1f（%s）\n基础代谢率: %.0f kcal/天".format(bmi, bmiCategory, bmr)
+                    }
+                }) { Text("计算") }
+            }
+        }
+        if (result.isNotBlank()) {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text(result, style = MaterialTheme.typography.h6, color = Color(0xFF00D4FF))
+            }
+        }
+    }
+}
+
+// ===================== 涂鸦画板 =====================
+
+@Composable
+private fun DrawingTool() {
+    var paths by remember { mutableStateOf<List<List<androidx.compose.ui.geometry.Offset>>>(emptyList()) }
+    var currentPath by remember { mutableStateOf<List<androidx.compose.ui.geometry.Offset>>(emptyList()) }
+    var color by remember { mutableStateOf(Color(0xFF00D4FF)) }
+    var strokeWidth by remember { mutableStateOf(4f) }
+    val colors = listOf(Color(0xFF00D4FF), Color(0xFF7B5CFC), Color(0xFFFF3B8B), Color(0xFF00E5A0), Color(0xFFFF6B35), Color.White)
+
+    Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // 工具栏
+        GlassCard(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                colors.forEach { c ->
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(c)
+                            .clickable { color = c }
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Text("粗细 ${strokeWidth.toInt()}", color = MaterialTheme.colors.onSurface)
+                OutlinedButton(onClick = { strokeWidth = (strokeWidth - 1f).coerceAtLeast(1f) }) { Text("-") }
+                OutlinedButton(onClick = { strokeWidth = (strokeWidth + 1f).coerceAtMost(20f) }) { Text("+") }
+                OutlinedButton(onClick = { paths = emptyList() }) { Text("清空") }
+            }
+        }
+        // 画布
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colors.surface)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                if (change.pressed) {
+                                    currentPath = currentPath + change.position
+                                } else {
+                                    if (currentPath.isNotEmpty()) {
+                                        paths = paths + currentPath
+                                        currentPath = emptyList()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                paths.forEach { path ->
+                    drawPath(
+                        path = androidx.compose.ui.graphics.Path().apply {
+                            path.forEachIndexed { i, p ->
+                                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+                            }
+                        },
+                        color = color,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+                    )
+                }
+                if (currentPath.size > 1) {
+                    drawPath(
+                        path = androidx.compose.ui.graphics.Path().apply {
+                            currentPath.forEachIndexed { i, p ->
+                                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+                            }
+                        },
+                        color = color,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ===================== 白噪音 =====================
+
+@Composable
+private fun WhiteNoiseTool() {
+    var playing by remember { mutableStateOf(false) }
+    var noiseType by remember { mutableStateOf(0) } // 0=白 1=粉 2=棕
+    var volume by remember { mutableStateOf(0.5f) }
+    val noiseNames = listOf("白噪音", "粉噪音", "棕噪音")
+    val player = remember { javax.sound.sampled.AudioSystem.getSourceDataLine(null) }
+
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            runCatching {
+                player.stop(); player.close()
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    if (playing) "● 播放中：${noiseNames[noiseType]}" else "○ 已停止",
+                    style = MaterialTheme.typography.h6,
+                    color = Color(0xFF00E5A0)
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    noiseNames.forEachIndexed { i, name ->
+                        Button(onClick = { noiseType = i }) {
+                            Text(if (noiseType == i) "$name ✓" else name)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("音量: ${(volume * 100).toInt()}%")
+                androidx.compose.material.Slider(
+                    value = volume,
+                    onValueChange = { volume = it },
+                    valueRange = 0f..1f
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        if (!playing) {
+                            playing = true
+                            Thread {
+                                runCatching {
+                                    val format = javax.sound.sampled.AudioFormat(44100f, 16, 1, true, false)
+                                    player.open(format)
+                                    player.start()
+                                    val buf = ByteArray(4096)
+                                    val rng = java.util.Random()
+                                    var lastBrown = 0.0
+                                    while (playing) {
+                                        for (i in 0 until buf.size step 2) {
+                                            val sample: Double = when (noiseType) {
+                                                0 -> rng.nextDouble() * 2 - 1 // 白
+                                                1 -> { // 粉（简化 Voss-McCartney）
+                                                    val white = rng.nextDouble() * 2 - 1
+                                                    (lastBrown * 0.98 + white * 0.02).also { lastBrown = it }
+                                                }
+                                                else -> { // 棕
+                                                    val white = rng.nextDouble() * 2 - 1
+                                                    (lastBrown + 0.02 * white).also {
+                                                        lastBrown = it.coerceIn(-1.0, 1.0)
+                                                    }
+                                                }
+                                            }
+                                            val s = (sample * volume * Short.MAX_VALUE).toInt()
+                                            buf[i] = (s and 0xFF).toByte()
+                                            buf[i + 1] = ((s shr 8) and 0xFF).toByte()
+                                        }
+                                        player.write(buf, 0, buf.size)
+                                    }
+                                    player.stop()
+                                }
+                            }.start()
+                        } else {
+                            playing = false
+                            runCatching { player.stop() }
+                        }
+                    }) { Text(if (playing) "停止" else "开始播放") }
+                    OutlinedButton(onClick = {
+                        playing = false
+                        runCatching { player.stop(); player.close() }
+                    }) { Text("重置") }
+                }
+            }
         }
     }
 }

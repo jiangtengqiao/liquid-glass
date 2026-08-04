@@ -19,6 +19,8 @@ dependencies {
     implementation("org.json:json:20240303")
     // HTTP 客户端（在线翻译/资源下载，已缓存于 Gradle 本地仓库）
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // MP3 解码播放（音乐模块：网易云在线播放 + 本地 mp3 播放）
+    implementation("javazoom:jlayer:1.0.1")
 }
 kotlin { jvmToolchain(17) }
 compose.desktop {
@@ -30,8 +32,8 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "LiquidGlass"
-            // v2.9.4：玻璃 UI 重构（alpha 0.08→0.72 解决文字不可读）+ 应用内更新下载向导
-            packageVersion = "2.9.4"
+            // v2.10.0：恢复音乐板块（10+ 功能：搜索/网易云/本地/歌词/队列/音质/定时/模式/登录/歌单）
+            packageVersion = "2.10.0"
             description = "LiquidGlass - Liquid Glass Smart Toolbox"
             vendor = "LiquidGlass"
             windows {
