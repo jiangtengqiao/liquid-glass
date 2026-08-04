@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHoverGestures
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,6 +115,20 @@ fun App() {
         mutableStateOf(!shortcutPrefs.getBoolean("shortcut_asked", false))
     }
     var shortcutResult by remember { mutableStateOf<String?>(null) }
+
+    // v2.9.4：启动时自动检查更新，发现新版本弹窗提醒（每个版本只提醒一次）
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val info = com.liquidglass.desktop.system.UpdateChecker.checkForUpdate(force = false)
+        if (info != null) {
+            // 检查是否已提醒过该版本
+            val notifiedVersion = shortcutPrefs.get("notified_update_version", "")
+            if (notifiedVersion != info.version) {
+                showUpdateDialog = true
+                shortcutPrefs.put("notified_update_version", info.version)
+            }
+        }
+    }
 
     // 流体背景动画驱动时间
     val transition = rememberInfiniteTransition(label = "fluid")
@@ -217,11 +233,18 @@ fun App() {
                     }
                 )
             }
+
+            // v2.9.4：启动时发现新版本的更新弹窗
+            if (showUpdateDialog) {
+                com.liquidglass.desktop.ui.UpdateDialog(
+                    onDismiss = { showUpdateDialog = false }
+                )
+            }
         }
     }
 }
 
-/** 侧边栏导航 */
+/** 侧边栏导航 - Material3 NavigationRail 风格 */
 @Composable
 private fun Sidebar(
     current: Screen,
@@ -229,11 +252,12 @@ private fun Sidebar(
 ) {
     Column(
         modifier = Modifier
-            .width(200.dp)
+            .width(220.dp)
             .fillMaxHeight()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        // 品牌区
         Text(
             text = "灵工坊",
             color = LiquidGlassTheme.onSurfaceColor,
@@ -245,38 +269,66 @@ private fun Sidebar(
             color = LiquidGlassTheme.onSurfaceMuted,
             style = MaterialTheme.typography.caption
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         navItems.forEach { item ->
             val selected = current == item.screen
-            // v2.9.3 修复：Surface(onClick) 的点击区域未被 shape 裁剪，
-            // 导致圆角矩形外的尖角区域也响应点击（用户反馈的"尖尖也跟着反馈"）。
-            // 改用 Box + clip(RoundedCornerShape) + clickable，确保点击区域严格限制在圆角内。
+            var hovered by remember { mutableStateOf(false) }
+
+            // 选中态：左侧竖条 + 玻璃背景；hover 态：轻微背景
+            val bgColor = when {
+                selected -> LiquidGlassTheme.accentPrimary.copy(alpha = 0.22f)
+                hovered -> LiquidGlassTheme.surfaceVariant.copy(alpha = 0.6f)
+                else -> Color.Transparent
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) LiquidGlassTheme.accentPrimary.copy(alpha = 0.25f) else Color.Transparent)
+                    .background(bgColor)
                     .clickable { onSelect(item.screen) }
+                    .pointerInput(Unit) {
+                        detectHoverGestures(
+                            onEnter = { hovered = true },
+                            onExit = { hovered = false }
+                        )
+                    }
             ) {
-                Text(
-                    text = item.label,
-                    color = if (selected) LiquidGlassTheme.onSurfaceColor
-                    else LiquidGlassTheme.onSurfaceMuted,
-                    modifier = Modifier.padding(12.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 图标（unicode 字符，避免引入图标库依赖）
+                    Text(
+                        text = item.icon,
+                        color = if (selected) LiquidGlassTheme.accentSecondary
+                        else LiquidGlassTheme.onSurfaceMuted,
+                        fontSize = 18.sp
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = item.label,
+                        color = if (selected) LiquidGlassTheme.onSurfaceColor
+                        else LiquidGlassTheme.onSurfaceMuted,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }
 }
 
-private data class NavItem(val screen: Screen, val label: String)
+private data class NavItem(val screen: Screen, val label: String, val icon: String)
 
 private val navItems: List<NavItem> = listOf(
-    NavItem(Screen.Home, "首页"),
-    NavItem(Screen.Translation, "翻译中心"),
-    NavItem(Screen.About, "关于"),
-    NavItem(Screen.BetaPioneer, "Beta 先锋")
+    NavItem(Screen.Home, "首页", "⌂"),
+    NavItem(Screen.Translation, "翻译中心", "文"),
+    NavItem(Screen.About, "关于", "ⓘ"),
+    NavItem(Screen.BetaPioneer, "Beta 先锋", "★")
 )
 
 /** 桌面快捷方式 Preferences 的命名空间标记 */
