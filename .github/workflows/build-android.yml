@@ -1,0 +1,73 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'LiquidGlassApp/**'
+      - '.github/workflows/build-android.yml'
+      - 'version.json'
+      - 'beta-version.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from version.json
+        id: ver
+        run: |
+          VERSION=$(jq -r '.version' version.json)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Release APK
+        working-directory: LiquidGlassApp
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          find LiquidGlassApp/app/build/outputs/apk/release -name "*.apk" -exec cp {} artifacts/LiquidGlass-v${{ steps.ver.outputs.VERSION }}.apk \;
+          ls -lh artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiquidGlass-Android-${{ steps.ver.outputs.VERSION }}
+          path: artifacts/*.apk
+
+      - name: Upload APK to GitHub Release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.VERSION }}
+        run: |
+          APK_PATH="artifacts/LiquidGlass-v${VERSION}.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "No APK found, skip release upload"
+            exit 0
+          fi
+          echo "Uploading: $APK_PATH"
+          TAG="v${VERSION}"
+          gh release create "$TAG" --repo ${{ github.repository }} --title "$TAG" --notes "Android $TAG - UI提亮+音乐多音质降级+版本对齐" --target main 2>/dev/null || true
+          gh release upload "$TAG" "$APK_PATH" --repo ${{ github.repository }} --clobber
+          echo "Upload complete"

@@ -906,7 +906,7 @@ fun AboutScreen(animTime: Float, onBack: () -> Unit) {
                     superGroups.forEachIndexed { index, (superMajor, majorList) ->
                         ChangelogSuperMajorGroup(superMajor = superMajor, majorGroups = majorList)
                         if (index < superGroups.size - 1) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
                 }
@@ -1075,12 +1075,12 @@ private fun ChangelogSuperMajorGroup(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .glassSurface(cornerRadius = 20.dp, glassAlpha = 0.18f)
+            .glassSurface(cornerRadius = 16.dp, glassAlpha = 0.15f)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { expanded = !expanded }
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1090,19 +1090,19 @@ private fun ChangelogSuperMajorGroup(
                 Icons.Default.ChevronRight,
                 contentDescription = if (expanded) "收起" else "展开",
                 tint = FluidPurple,
-                modifier = Modifier.size(22.dp).rotate(rotation)
+                modifier = Modifier.size(18.dp).rotate(rotation)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "超级大版 v$superMajor",
-                    fontSize = 18.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = FluidPurple
                 )
                 Text(
                     text = "${majorGroups.size} 个大版本 · $totalVersions 个小版本",
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     color = appTextTertiary()
                 )
             }
@@ -1118,8 +1118,8 @@ private fun ChangelogSuperMajorGroup(
             ) + fadeOut(animationSpec = tween(150))
         ) {
             Column(
-                modifier = Modifier.padding(start = 8.dp, top = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 majorGroups.forEach { (major, versions) ->
                     ChangelogMajorGroup(major = major, versions = versions)
@@ -1145,12 +1145,12 @@ private fun ChangelogMajorGroup(major: String, versions: List<ChangelogVersion>)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .glassSurface(cornerRadius = 16.dp, glassAlpha = 0.12f)
+            .glassSurface(cornerRadius = 12.dp, glassAlpha = 0.10f)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { expanded = !expanded }
-            .padding(horizontal = 18.dp, vertical = 14.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1160,19 +1160,19 @@ private fun ChangelogMajorGroup(major: String, versions: List<ChangelogVersion>)
                 Icons.Default.ChevronRight,
                 contentDescription = if (expanded) "收起" else "展开",
                 tint = FluidCyan,
-                modifier = Modifier.size(20.dp).rotate(rotation)
+                modifier = Modifier.size(16.dp).rotate(rotation)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "v$major.x",
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = FluidCyan
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "${versions.size} 个版本",
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 color = appTextTertiary()
             )
         }
@@ -1187,8 +1187,8 @@ private fun ChangelogMajorGroup(major: String, versions: List<ChangelogVersion>)
             ) + fadeOut(animationSpec = tween(150))
         ) {
             Column(
-                modifier = Modifier.padding(start = 12.dp, top = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(start = 6.dp, top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 versions.forEach { version ->
                     ChangelogItem(version)
@@ -1210,12 +1210,12 @@ private fun ChangelogItem(version: ChangelogVersion) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .glassSurface(cornerRadius = 12.dp, glassAlpha = 0.08f)
+            .glassSurface(cornerRadius = 10.dp, glassAlpha = 0.06f)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { expanded = !expanded }
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1225,19 +1225,19 @@ private fun ChangelogItem(version: ChangelogVersion) {
                 Icons.Default.ChevronRight,
                 contentDescription = if (expanded) "收起" else "展开",
                 tint = FluidCyan.copy(alpha = 0.8f),
-                modifier = Modifier.size(16.dp).rotate(rotation)
+                modifier = Modifier.size(14.dp).rotate(rotation)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "v${version.version}",
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = FluidCyan,
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = version.date,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 color = appTextTertiary()
             )
         }
@@ -1252,10 +1252,10 @@ private fun ChangelogItem(version: ChangelogVersion) {
             ) + fadeOut(animationSpec = tween(150))
         ) {
             Column(
-                modifier = Modifier.padding(start = 24.dp, top = 6.dp)
+                modifier = Modifier.padding(start = 12.dp, top = 3.dp)
             ) {
                 for (note in version.notes) {
-                    Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                    Row(modifier = Modifier.padding(vertical = 1.dp)) {
                         Text(
                             text = "\u2022",
                             fontSize = 11.sp,

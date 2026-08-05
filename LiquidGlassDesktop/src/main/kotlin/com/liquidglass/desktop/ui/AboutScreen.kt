@@ -194,12 +194,12 @@ fun AboutScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun MegaVersionItem(mega: MegaVersion) {
     var expanded by remember { mutableStateOf(true) }
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+    Column(modifier = Modifier.padding(vertical = 2.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(vertical = 6.dp),
+                .padding(vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -218,7 +218,7 @@ private fun MegaVersionItem(mega: MegaVersion) {
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            Column(modifier = Modifier.padding(start = 16.dp)) {
+            Column(modifier = Modifier.padding(start = 12.dp)) {
                 mega.majors.forEach { major -> MajorVersionItem(major) }
             }
         }
@@ -229,12 +229,12 @@ private fun MegaVersionItem(mega: MegaVersion) {
 @Composable
 private fun MajorVersionItem(major: MajorVersion) {
     var expanded by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+    Column(modifier = Modifier.padding(vertical = 1.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(vertical = 4.dp),
+                .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -251,7 +251,7 @@ private fun MajorVersionItem(major: MajorVersion) {
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            Column(modifier = Modifier.padding(start = 16.dp)) {
+            Column(modifier = Modifier.padding(start = 12.dp)) {
                 major.minors.forEach { minor -> MinorVersionItem(minor) }
             }
         }
@@ -262,12 +262,12 @@ private fun MajorVersionItem(major: MajorVersion) {
 @Composable
 private fun MinorVersionItem(minor: MinorVersion) {
     var expanded by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+    Column(modifier = Modifier.padding(vertical = 1.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(vertical = 3.dp),
+                .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -284,12 +284,12 @@ private fun MinorVersionItem(minor: MinorVersion) {
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            Column(modifier = Modifier.padding(start = 16.dp)) {
+            Column(modifier = Modifier.padding(start = 12.dp)) {
                 minor.items.forEach { item ->
                     Text(
                         text = "- $item",
                         color = LiquidGlassTheme.onSurfaceMuted,
-                        modifier = Modifier.padding(vertical = 2.dp)
+                        modifier = Modifier.padding(vertical = 1.dp)
                     )
                 }
             }
