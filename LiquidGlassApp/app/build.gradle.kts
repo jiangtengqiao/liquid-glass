@@ -23,8 +23,8 @@ android {
         applicationId = "com.liquidglass.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 51
-        versionName = "2.9.2"
+        versionCode = 56
+        versionName = "2.11.1"
     }
 
     buildTypes {

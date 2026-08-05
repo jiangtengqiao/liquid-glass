@@ -2,9 +2,9 @@ package com.liquidglass.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// 极简深色背景
-val BgDark = Color(0xFF08080F)
-val BgDark2 = Color(0xFF0D0D1A)
+// v2.11.1: 大幅提亮背景（对齐桌面端，解决"太暗"问题）
+val BgDark = Color(0xFF2A2A5A)
+val BgDark2 = Color(0xFF3A3A72)
 
 // 液态玻璃 - 超通透系列
 val GlassClear = Color(0x10FFFFFF)
@@ -28,10 +28,10 @@ val AccentDanger = Color(0xFFFF4757)
 val AccentSuccess = Color(0xFF2ED573)
 val AccentWarning = Color(0xFFFFA502)
 
-// 文字色
-val TextPrimary = Color(0xFFF0F0F5)
-val TextSecondary = Color(0x99FFFFFF)
-val TextTertiary = Color(0x55FFFFFF)
+// v2.11.1: 文字色提亮至纯白（对齐桌面端，解决"文字可见度"问题）
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xCCFFFFFF)
+val TextTertiary = Color(0x80FFFFFF)
 
 // 渐变流体色组
 val FluidGradientColors = listOf(

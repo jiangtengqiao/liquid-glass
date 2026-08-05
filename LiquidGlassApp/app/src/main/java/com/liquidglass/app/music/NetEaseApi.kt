@@ -124,10 +124,15 @@ object NetEaseApi {
             if (!checkResponse(json, "songUrl")) return@withContext ""
             val data = json.optJSONArray("data") ?: return@withContext ""
             if (data.length() == 0) return@withContext ""
-            // 非 VIP 用户请求 lossless 时，服务端可能返回空 url：自动降级到 exhigh 重试一次
+            // v2.11.1: 多音质降级重试（对齐桌面端，修复"非VIP歌也播不了"）
+            // lossless→exhigh→standard 三级降级，避免单档位空 url 导致无法播放
             val url = data.getJSONObject(0).optString("url")
-            if (url.isBlank() && level == "lossless") {
-                return@withContext songUrl(songId, "exhigh")
+            if (url.isBlank()) {
+                return@withContext when (level) {
+                    "lossless", "hires" -> songUrl(songId, "exhigh")
+                    "exhigh" -> songUrl(songId, "standard")
+                    else -> ""
+                }
             }
             url ?: ""
         } catch (e: Exception) {

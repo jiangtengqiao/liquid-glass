@@ -1,18 +1,15 @@
 {
-  "betaVersion": "2.9.2-beta.1",
-  "versionCode": 51,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.9.2-beta.1/LiquidGlass-v2.9.2-beta.1.apk",
-  "releaseNotes": "v2.9.2-beta.1 先锋内测版：主题大道至简（黑/白/系统自动）、Beta 先锋码系统、日志上传、公告栏、Windows Desktop 端首发。",
+  "betaVersion": "2.11.1-beta.1",
+  "versionCode": 56,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1-beta.1/LiquidGlass-v2.11.1-beta.1.apk",
+  "releaseNotes": "v2.11.1-beta.1 先锋内测版：UI大幅提亮+主文字纯白+音乐多音质降级+玻璃通透度增强。",
   "knownIssues": [
-    "Windows Desktop 端部分工具功能仍在移植中",
     "iOS 端需 Mac + Xcode 编译，无 ipa 直装包"
   ],
   "newFeatures": [
-    "Beta 先锋体验码申请系统（问卷+账户检测+17-25位不规则码）",
-    "用户日志上传系统（崩溃捕获+自动上传）",
-    "顶部公告栏系统（远程推送）",
-    "主题精简为黑/白/系统自动",
-    "Windows Desktop 端（Compose Multiplatform）",
-    "全代码 emoji 清除"
+    "UI大幅提亮（背景#2A2A5A，解决过暗问题）",
+    "主文字色提升至纯白（解决文字可见度）",
+    "音乐多音质降级（lossless→exhigh→standard，修复非VIP无法播放）",
+    "玻璃态通透度增强"
   ]
 }

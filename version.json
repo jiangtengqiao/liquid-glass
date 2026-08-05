@@ -1,7 +1,7 @@
 {
-  "version": "2.10.0",
-  "versionCode": 54,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.10.0/LiquidGlass-v2.10.0.apk",
-  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.10.0/LiquidGlass-2.10.0.exe",
-  "releaseNotes": "v2.10.0 恢复音乐板块(20+功能:网易云登录/搜索/歌词/歌单/本地播放/队列/音质/睡眠定时/播放模式) + 背景色彩折射增强(7层光斑+网格纹理+暗角) + 交互修复(消除圆角尖角反馈,改用scale弹性动画) + 侧边栏图标渐变背景圆 + 工具卡片hover上浮动画"
+  "version": "2.11.1",
+  "versionCode": 56,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1/LiquidGlass-v2.11.1.apk",
+  "desktopDownloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1/LiquidGlass-2.11.1.exe",
+  "releaseNotes": "v2.11.1 全平台对齐 - UI大幅提亮(背景#2A2A5A解决过暗)+主文字纯白(解决可见度)+翻译长文本分段(PRO会员无500字符限制)+音乐多音质降级(lossless→exhigh→standard修复非VIP无法播放)+emoji全清除+玻璃通透度增强"
 }
