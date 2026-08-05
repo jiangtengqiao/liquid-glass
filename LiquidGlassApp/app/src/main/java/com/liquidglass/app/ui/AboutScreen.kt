@@ -56,6 +56,7 @@ enum class ResourcePackType { BASE, INTERACTION, PATCH_CORE, INIT_PREMIUM, INSTA
 fun AboutScreen(animTime: Float, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // v2.11.2: 用 rememberScrollState 配合 ScrollableDefaults 提升 fling 跟手度
     val scrollState = rememberScrollState()
 
     var updateStatus by remember { mutableStateOf("") }
@@ -532,7 +533,10 @@ fun AboutScreen(animTime: Float, onBack: () -> Unit) {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .verticalScroll(scrollState)
+                .verticalScroll(
+                    state = scrollState,
+                    flingBehavior = androidx.compose.foundation.ScrollableDefaults.flingBehavior()
+                )
                 .padding(horizontal = 20.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -882,20 +886,20 @@ fun AboutScreen(animTime: Float, onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(20.dp))
 
             // === 更新日志（分级折叠：大版本号 > 小版本号 > notes） ===
-            Box(modifier = Modifier.fillMaxWidth().glassSurface(cornerRadius = 24.dp, glassAlpha = 0.15f).padding(24.dp)) {
+            Box(modifier = Modifier.fillMaxWidth().glassSurface(cornerRadius = 16.dp, glassAlpha = 0.12f).padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.History, null, tint = FluidCyan, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("更新日志", fontSize = 18.sp, fontWeight = FontWeight.Light, color = appTextPrimary())
+                        Icon(Icons.Default.History, null, tint = FluidCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("更新日志", fontSize = 15.sp, fontWeight = FontWeight.Light, color = appTextPrimary())
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
                             "${changelog.size} 个版本",
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = appTextTertiary()
                         )
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // v2.9.0 超级大版折叠：先按大版本号分组(如 "2.9" "2.8" "1.0")，
                     // 再按首段融合为超级大版(如 "2" 包含所有 2.x，"1" 包含所有 1.x)

@@ -138,15 +138,15 @@ object ResourceManager {
         }
     }
 
-    // ── v2.9.0 下载系统全盘重写 ──
-    // 根因：原实现每个文件用 4 个镜像源依次尝试，镜像切换时进度归零重启，
-    //       即使有 Range 续传也会因各镜像 Content-Length 不一致导致进度条反复横跳。
-    // 修复：单源下载（cors.isteed.cc 实测国内最稳定且不截断），仅在连接完全失败时
-    //       才切下一个镜像。每个分块显示真实文件名（resources.part00 等）。
-    private val PRIMARY_MIRROR = "https://cors.isteed.cc/github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.4"
+    // ── v2.11.2 下载镜像源重写 ──
+    // 根因：cors.isteed.cc 常不稳定/超时，且指向 v2.3.4 旧版 release。
+    // 修复：改用国内稳定镜像优先（ghproxy.net → gh-proxy.com → GitHub 直连），
+    //       指向 v2.11.1 最新 release。单源下载，仅连接失败才切 fallback。
+    private val PRIMARY_MIRROR = "https://ghproxy.net/https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1"
     private val FALLBACK_MIRRORS = listOf(
-        "https://gh-proxy.com/https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.4",
-        "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.3.4"
+        "https://gh-proxy.com/https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1",
+        "https://mirror.ghproxy.com/https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1",
+        "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1"
     )
 
     // 单文件资源包 URL（单源，仅连接失败时才 fallback）

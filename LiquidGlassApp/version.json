@@ -1,6 +1,6 @@
 {
-  "version": "2.11.1",
-  "versionCode": 56,
-  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.1/LiquidGlass-v2.11.1.apk",
-  "releaseNotes": "v2.11.1 对齐桌面端改进 - UI大幅提亮(背景从纯黑提亮至蓝紫#2A2A5A解决过暗问题)+主文字色提升至纯白(解决文字可见度)+音乐多音质降级重试(lossless→exhigh→standard三级降级修复非VIP歌曲无法播放)+玻璃态通透度增强"
+  "version": "2.11.2",
+  "versionCode": 57,
+  "downloadUrl": "https://github.com/jiangtengqiao/liquid-glass/releases/download/v2.11.2/LiquidGlass-v2.11.2.apk",
+  "releaseNotes": "v2.11.2 安卓体验优化 - 更新日志间距再压缩+公告栏提速(滚动速度提升40%)+资源包镜像源重写(ghproxy.net主镜像解决无法下载)+滑动fling优化"
 }

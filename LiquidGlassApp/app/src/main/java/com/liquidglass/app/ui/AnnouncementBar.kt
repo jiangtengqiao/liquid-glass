@@ -70,30 +70,29 @@ fun AnnouncementBar(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.width(8.dp))
 
-        // 横向自动滚动正文
+        // 横向自动滚动正文（v2.11.2 提速：等待600ms→300ms，滚动速度x*12→x*8更快）
         val scrollState = rememberScrollState()
         LaunchedEffect(top.id) {
-            // 自动横向滚动：滚到末尾再回到开头，循环展示长文本
             while (true) {
-                delay(1200)
+                delay(600)
                 val max = scrollState.maxValue
                 if (max > 0) {
                     scrollState.animateScrollTo(
                         value = max,
                         animationSpec = tween(
-                            durationMillis = (max * 25).coerceAtLeast(800),
+                            durationMillis = (max * 8).coerceAtLeast(500),
                             easing = LinearEasing
                         )
                     )
-                    delay(800)
+                    delay(400)
                     scrollState.animateScrollTo(
                         value = 0,
-                        animationSpec = tween(durationMillis = 600, easing = LinearEasing)
+                        animationSpec = tween(durationMillis = 400, easing = LinearEasing
+                        )
                     )
-                    delay(800)
+                    delay(400)
                 } else {
-                    // 文本未溢出，无需滚动
-                    delay(3000)
+                    delay(2000)
                 }
             }
         }
@@ -106,9 +105,9 @@ fun AnnouncementBar(modifier: Modifier = Modifier) {
         Text(
             text = display,
             color = appTextPrimary(),
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
+            maxLines = 2,
             modifier = Modifier
                 .weight(1f)
                 .horizontalScroll(scrollState)
