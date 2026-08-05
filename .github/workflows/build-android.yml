@@ -41,18 +41,24 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Strip local-only Gradle props (java.home / proxy)
+      - name: Strip local-only Gradle props (java.home / proxy) and boost heap
         working-directory: LiquidGlassApp
         run: |
           # 移除本地开发专用的 java.home 和代理设置（CI 环境不存在这些路径）
           sed -i '/org.gradle.java.home/d' gradle.properties
           sed -i '/proxyHost/d; /proxyPort/d' gradle.properties
+          # 重写 jvmargs：CI 给 4G 堆 + 1G metaspace，避免 D8 OOM
+          sed -i '/org.gradle.jvmargs/d' gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8" >> gradle.properties
+          # D8/dex 内存
+          sed -i '/android.builder.sdkDownload/d' gradle.properties
+          echo "android.experimental.enableNewResourceShrinker.preciseShrinking=true" >> gradle.properties
           echo "=== gradle.properties after strip ==="
           cat gradle.properties
 
       - name: Build Release APK
         working-directory: LiquidGlassApp
-        run: gradle assembleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK
         run: |
