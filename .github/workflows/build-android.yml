@@ -41,6 +41,15 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Strip local-only Gradle props (java.home / proxy)
+        working-directory: LiquidGlassApp
+        run: |
+          # 移除本地开发专用的 java.home 和代理设置（CI 环境不存在这些路径）
+          sed -i '/org.gradle.java.home/d' gradle.properties
+          sed -i '/proxyHost/d; /proxyPort/d' gradle.properties
+          echo "=== gradle.properties after strip ==="
+          cat gradle.properties
+
       - name: Build Release APK
         working-directory: LiquidGlassApp
         run: gradle assembleRelease --no-daemon
