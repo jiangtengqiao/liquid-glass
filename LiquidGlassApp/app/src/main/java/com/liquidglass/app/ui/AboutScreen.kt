@@ -56,7 +56,6 @@ enum class ResourcePackType { BASE, INTERACTION, PATCH_CORE, INIT_PREMIUM, INSTA
 fun AboutScreen(animTime: Float, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // v2.11.2: 用 rememberScrollState 配合 ScrollableDefaults 提升 fling 跟手度
     val scrollState = rememberScrollState()
 
     var updateStatus by remember { mutableStateOf("") }
@@ -533,10 +532,7 @@ fun AboutScreen(animTime: Float, onBack: () -> Unit) {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .verticalScroll(
-                    state = scrollState,
-                    flingBehavior = androidx.compose.foundation.ScrollableDefaults.flingBehavior()
-                )
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
